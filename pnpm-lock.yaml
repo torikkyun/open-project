@@ -51,9 +51,6 @@ importers:
       '@repo/oxfmt-config':
         specifier: workspace:*
         version: link:../../packages/oxfmt-config
-      '@repo/oxlint-config':
-        specifier: workspace:*
-        version: link:../../packages/oxlint-config
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -144,8 +141,6 @@ importers:
         version: 8.2.1(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0)
 
   packages/oxfmt-config: {}
-
-  packages/oxlint-config: {}
 
   packages/typescript-config: {}
 

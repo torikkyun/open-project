@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "scripts": {
+    "lint": "oxlint --config ./.oxlintrc.json src/",
+    "format": "oxfmt --config ./.oxfmtrc.json src/",
+    "check-types": "tsc --noEmit -p tsconfig.build.json",
     "dev": "vite dev",
     "build": "vite build"
   },
