@@ -1,12 +1,4 @@
 {
   "extends": "@repo/typescript-config/nest-js",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "sourceMap": true,
-    "removeComments": true,
-    "incremental": true,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
-  }
+  "include": ["src/**/*.ts"]
 }
