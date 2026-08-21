@@ -3,7 +3,7 @@ name: open-project
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: database
+    container_name: open-project-database-dev
     restart: always
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
@@ -12,7 +12,7 @@ services:
     ports:
       - "127.0.0.1:${DATABASE_PORT:-5433}:5432"
     volumes:
-      - database_data:/var/lib/postgresql/data
+      - open_project_database_dev_data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
@@ -26,12 +26,12 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: cache
+    container_name: open-project-cache-dev
     restart: always
     ports:
       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
-      - cache_data:/data
+      - open_project_cache_dev_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -40,5 +40,5 @@ services:
       start_period: 10s
 
 volumes:
-  database_data:
-  cache_data:
+  open_project_database_dev_data:
+  open_project_cache_dev_data:

@@ -1,4 +1,11 @@
 {
   "extends": "@repo/typescript-config/nest-js",
-  "include": ["src/**/*.ts"]
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/prisma/*": ["./src/generated/prisma/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "prisma/seed.ts"],
+  "exclude": ["node_modules", "dist"]
 }

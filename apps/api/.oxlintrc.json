@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "rules": {
-    "unicorn/filename-case": ["warn", { "case": "camelCase" }],
+    "unicorn/filename-case": ["warn", { "case": "kebabCase" }],
     "no-unused-vars": "warn",
     "typescript/no-explicit-any": "warn"
   },

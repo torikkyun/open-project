@@ -4,10 +4,6 @@
   "compilerOptions": {
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "paths": {
-      "@/*": ["./src/*"],
-      "@/prisma/*": ["./generated/prisma/*"]
-    },
     "types": ["node", "jest"],
     "outDir": "./dist",
     "sourceMap": true,
@@ -16,5 +12,5 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  },
+  }
 }
