@@ -10,12 +10,16 @@ trim_trailing_whitespace = true
 indent_size = 4
 indent_style = tab
 
-[.{html,css,js,jsx,ts,tsx}]
+[*.{html,css,js,jsx,ts,tsx}]
 indent_size = 2
 max_line_length = 80
 indent_style = space
 quote_type = double
 
 [*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.json]
 indent_style = space
 indent_size = 2

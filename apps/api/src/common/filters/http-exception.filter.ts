@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from "@nestjs/common";
-import { Response } from "express";
+import { Response, Request } from "express";
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -15,6 +15,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message:
         typeof message === "string" ? message : (message as { message: string | string[] }).message,
       timestamp: new Date().toISOString(),
+      path: ctx.getRequest<Request>().url,
     });
   }
 }

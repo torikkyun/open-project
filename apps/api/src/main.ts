@@ -1,17 +1,21 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { NestExpressApplication } from "@nestjs/platform-express";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 import { ConfigService } from "@nestjs/config";
 import { ValidationPipe } from "@nestjs/common";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import * as path from "path";
+import path from "path";
 import compression from "compression";
+import { setupSwagger } from "./configs/swagger.config";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const configService = app.get(ConfigService);
+  const nodeEnv = configService.getOrThrow("app.nodeEnv", { infer: true });
+  const port = configService.get<number>("app.port", { infer: true }) ?? 3000;
 
   app.enableCors({
     origin: ["*"],
@@ -21,9 +25,9 @@ async function bootstrap() {
   });
 
   app.use(cookieParser(), compression());
-  const configService = app.get(ConfigService);
   app.useStaticAssets(
-    configService.get<string>("UPLOAD_PATH") || path.join(process.cwd(), "uploads"),
+    configService.get<string>("UPLOAD_PATH") ||
+      path.join(process.cwd(), "uploads"),
     {
       prefix: "/uploads",
     },
@@ -37,25 +41,10 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const config = new DocumentBuilder()
-    .setTitle("Open Project API")
-    .setDescription("Made with ❤️ by @torikkyun")
-    .setVersion("0.1")
-    .addBearerAuth({
-      name: "Authorization",
-      bearerFormat: "Bearer",
-      scheme: "bearer",
-      type: "http",
-      in: "Header",
-    })
-    .build();
+  if (nodeEnv !== "production") {
+    setupSwagger(app);
+  }
 
-  SwaggerModule.setup("api/swagger", app, SwaggerModule.createDocument(app, config), {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
-
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(port);
 }
 bootstrap();

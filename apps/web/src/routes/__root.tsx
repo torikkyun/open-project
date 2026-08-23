@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import appCss from "../assets/styles/globals.css?url";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,6 +14,25 @@ export const Route = createRootRoute({
       },
       {
         title: "TanStack Start Starter",
+      },
+    ],
+    links: [
+      {
+        rel: "preconnect",
+        href: "https://fonts.googleapis.com",
+      },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&display=swap",
+      },
+      {
+        rel: "stylesheet",
+        href: appCss,
       },
     ],
   }),
