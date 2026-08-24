@@ -5,7 +5,7 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { ROLES_KEY } from "../decorators/roles.decorator";
+import { ROLES_KEY } from "../../../common/decorators/roles.decorator";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -35,7 +35,7 @@ export class RolesGuard implements CanActivate {
 
     if (!hasRole) {
       throw new ForbiddenException(
-        "You do not have permission to access this resource",
+        "Bạn không có quyền truy cập vào tài nguyên này.",
       );
     }
 

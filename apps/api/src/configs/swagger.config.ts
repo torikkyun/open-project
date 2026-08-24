@@ -1,4 +1,4 @@
-import { type INestApplication } from "@nestjs/common";
+import { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 export function setupSwagger(app: INestApplication) {
@@ -6,12 +6,10 @@ export function setupSwagger(app: INestApplication) {
     .setTitle("Open Project API")
     .setDescription("Made with ❤️ by @torikkyun")
     .setVersion("0.0.1")
-    .addBearerAuth({
-      name: "Authorization",
-      bearerFormat: "Bearer",
-      scheme: "bearer",
-      type: "http",
-      in: "Header",
+    .addCookieAuth("accessToken", {
+      type: "apiKey",
+      in: "cookie",
+      name: "accessToken",
     })
     .build();
   const document = SwaggerModule.createDocument(app, config);
@@ -19,6 +17,11 @@ export function setupSwagger(app: INestApplication) {
     customSiteTitle: "Open Project API",
     swaggerOptions: {
       persistAuthorization: true,
+      defaultModelsExpandDepth: -1,
+      requestInterceptor: (req: RequestInit) => {
+        req.credentials = "include";
+        return req;
+      },
     },
     //   plugins: [
     //     (...args: any[]) => (window as any).HierarchicalTagsPlugin(...args),

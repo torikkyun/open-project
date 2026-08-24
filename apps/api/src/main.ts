@@ -1,9 +1,13 @@
-import { NestFactory } from "@nestjs/core";
+import { NestFactory, Reflector } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import cookieParser from "cookie-parser";
 import { ConfigService } from "@nestjs/config";
-import { ValidationPipe } from "@nestjs/common";
+import {
+  ClassSerializerInterceptor,
+  ValidationPipe,
+  VersioningType,
+} from "@nestjs/common";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
 import path from "path";
@@ -17,8 +21,13 @@ async function bootstrap() {
   const nodeEnv = configService.getOrThrow("app.nodeEnv", { infer: true });
   const port = configService.get<number>("app.port", { infer: true }) ?? 3000;
 
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: "1",
+  });
+
   app.enableCors({
-    origin: ["*"],
+    origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     allowedHeaders: "Content-Type, Accept, Authorization",
     credentials: true,
@@ -39,7 +48,10 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(
+    new TransformInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
+  );
 
   if (nodeEnv !== "production") {
     setupSwagger(app);

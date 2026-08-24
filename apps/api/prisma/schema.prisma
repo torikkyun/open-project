@@ -14,13 +14,27 @@ model User {
   passwordHash String @map("password_hash") @db.VarChar(255)
   avatarUrl    String @map("avatar_url") @db.VarChar(255)
 
-  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
   membership          Membership?
-  invitationsSent     Invitation[] @relation("InvitationInviter")
-  invitationsReceived Invitation[] @relation("InvitationInvitee")
+  invitationsSent     Invitation[]  @relation("InvitationInviter")
+  invitationsReceived Invitation[]  @relation("InvitationInvitee")
+  refreshToken        RefreshToken?
 
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique @db.Text
+  expiresAt DateTime @map("expires_at") @db.Timestamptz()
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
 }
 
 model UserRole {

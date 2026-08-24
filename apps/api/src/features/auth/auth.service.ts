@@ -9,13 +9,43 @@ import { RegisterDto } from "./dto/register.dto";
 import { hashPassword, verifyPassword } from "@/common/utils/hash.util";
 import { AuthenticatedUser } from "@/common/types/auth-user.type";
 import { Prisma } from "@/generated/prisma/client";
+import { randomBytes } from "crypto";
+import { CookieService } from "./cookie.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly cookieService: CookieService,
   ) {}
+
+  private async upsertRefreshToken(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    const token = randomBytes(64).toString("hex");
+    const expiresAt = new Date(
+      Date.now() + this.cookieService.getRefreshTokenMaxAge(),
+    );
+
+    const result = await client.refreshToken.upsert({
+      where: { userId },
+      create: {
+        token,
+        expiresAt,
+        user: { connect: { id: userId } },
+      },
+      update: {
+        token,
+        expiresAt,
+      },
+      select: { token: true },
+    });
+
+    return result.token;
+  }
 
   async validateUser(
     email: string,
@@ -63,6 +93,50 @@ export class AuthService {
       email: user.email,
     });
 
-    return { accessToken };
+    const refreshToken = await this.upsertRefreshToken(user.id);
+
+    return { accessToken, refreshToken };
+  }
+
+  async refresh(token: string) {
+    if (!token) {
+      throw new UnauthorizedException("Refresh token không hợp lệ");
+    }
+    const result = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.refreshToken.findUnique({
+        where: { token },
+        include: { user: true },
+      });
+
+      if (!existing || !existing.user) {
+        throw new UnauthorizedException("Refresh token không hợp lệ");
+      }
+
+      if (existing.expiresAt < new Date()) {
+        await tx.refreshToken.delete({ where: { id: existing.id } });
+        throw new UnauthorizedException("Refresh token đã hết hạn");
+      }
+
+      await tx.refreshToken.delete({ where: { id: existing.id } });
+      const newRefreshToken = await this.upsertRefreshToken(
+        existing.user.id,
+        tx,
+      );
+
+      return { user: existing.user, refreshToken: newRefreshToken };
+    });
+
+    const accessToken = await this.jwtService.signAsync({
+      sub: result.user.id,
+      email: result.user.email,
+    });
+
+    return { accessToken, refreshToken: result.refreshToken };
+  }
+
+  async logout(userId: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId },
+    });
   }
 }

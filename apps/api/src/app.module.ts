@@ -5,8 +5,9 @@ import { ConfigModule } from "@nestjs/config";
 import { configs } from "./configs";
 import { AuthModule } from "./features/auth/auth.module";
 import { APP_GUARD } from "@nestjs/core";
-import { RolesGuard } from "./common/guards/roles.guard";
-import { JwtGuard } from "./common/guards/jwt.guard";
+import { RolesGuard } from "./features/auth/guards/roles.guard";
+import { JwtGuard } from "./features/auth/guards/jwt.guard";
+import { UsersModule } from "./features/users/users.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { JwtGuard } from "./common/guards/jwt.guard";
     PrismaModule,
     HealthModule,
     AuthModule,
+    UsersModule,
   ],
   providers: [
     {

@@ -7,10 +7,10 @@ class JwtEnvironmentVariables {
   JWT_SECRET!: string;
 
   @IsString()
-  JWT_EXPIRATION!: string;
+  JWT_COOKIE_EXPIRATION!: string;
 
   @IsString()
-  JWT_REFRESH_EXPIRATION!: string;
+  JWT_COOKIE_REFRESH_EXPIRATION!: string;
 }
 
 export default registerAs("jwt", () => {
@@ -18,7 +18,7 @@ export default registerAs("jwt", () => {
 
   return {
     jwtSecret: process.env.JWT_SECRET,
-    jwtExpiration: process.env.JWT_EXPIRATION,
-    jwtRefreshExpiration: process.env.JWT_REFRESH_EXPIRATION,
+    jwtCookieExpiration: process.env.JWT_COOKIE_EXPIRATION,
+    jwtCookieRefreshExpiration: process.env.JWT_COOKIE_REFRESH_EXPIRATION,
   };
 });

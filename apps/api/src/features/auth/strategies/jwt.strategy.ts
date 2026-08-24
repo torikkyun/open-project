@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
+import type { Request } from "express";
 
 type JwtPayload = { sub: string; email: string };
 
@@ -9,8 +10,9 @@ type JwtPayload = { sub: string; email: string };
 export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   constructor(configService: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req: Request) => req.cookies.accessToken,
+      ]),
       secretOrKey: configService.getOrThrow<string>("jwt.jwtSecret", {
         infer: true,
       }),
