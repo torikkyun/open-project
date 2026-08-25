@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   Post,
   Request,
   Res,
@@ -16,7 +15,7 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { LocalGuard } from "./guards/local.guard";
 import { AuthenticatedUser } from "@/common/types/auth-user.type";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiCookieAuth, ApiTags } from "@nestjs/swagger";
 import { CookieService } from "./cookie.service";
 
 @ApiTags("Auth")
@@ -99,8 +98,9 @@ export class AuthController {
     };
   }
 
+  @ApiCookieAuth()
   @Version(VERSION_NEUTRAL)
-  @Get("logout")
+  @Post("logout")
   async logout(
     @Request() request: { user: AuthenticatedUser },
     @Res({ passthrough: true }) res: Response,

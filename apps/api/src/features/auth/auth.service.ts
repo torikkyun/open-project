@@ -87,10 +87,22 @@ export class AuthService {
     }
   }
 
+  private async getUserRoles(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { membership: { include: { role: true } } },
+    });
+
+    const role = user?.membership?.role;
+    return role ? [role.code, role.name] : [];
+  }
+
   async login(user: AuthenticatedUser) {
+    const roles = await this.getUserRoles(user.id);
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
+      roles,
     });
 
     const refreshToken = await this.upsertRefreshToken(user.id);
@@ -126,9 +138,11 @@ export class AuthService {
       return { user: existing.user, refreshToken: newRefreshToken };
     });
 
+    const roles = await this.getUserRoles(result.user.id);
     const accessToken = await this.jwtService.signAsync({
       sub: result.user.id,
       email: result.user.email,
+      roles,
     });
 
     return { accessToken, refreshToken: result.refreshToken };

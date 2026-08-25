@@ -59,4 +59,7 @@ async function bootstrap() {
 
   await app.listen(port);
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error("Error starting server:", error);
+  process.exit(1);
+});

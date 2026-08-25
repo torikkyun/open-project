@@ -8,6 +8,8 @@ import { APP_GUARD } from "@nestjs/core";
 import { RolesGuard } from "./features/auth/guards/roles.guard";
 import { JwtGuard } from "./features/auth/guards/jwt.guard";
 import { UsersModule } from "./features/users/users.module";
+import { MembersModule } from "./features/members/members.module";
+import { InvitationsModule } from "./features/invitations/invitations.module";
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { UsersModule } from "./features/users/users.module";
     HealthModule,
     AuthModule,
     UsersModule,
+    MembersModule,
+    InvitationsModule,
   ],
   providers: [
     {

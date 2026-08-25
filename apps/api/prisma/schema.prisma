@@ -7,36 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id           String @id @default(uuid()) @db.Uuid
-  email        String @unique @db.VarChar(50)
-  name         String @db.VarChar(120)
-  passwordHash String @map("password_hash") @db.VarChar(255)
-  avatarUrl    String @map("avatar_url") @db.VarChar(255)
-
-  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
-  membership          Membership?
-  invitationsSent     Invitation[]  @relation("InvitationInviter")
-  invitationsReceived Invitation[]  @relation("InvitationInvitee")
-  refreshToken        RefreshToken?
-
-  @@map("users")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  token     String   @unique @db.Text
-  expiresAt DateTime @map("expires_at") @db.Timestamptz()
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-
-  userId String @unique @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@map("refresh_tokens")
-}
-
 model UserRole {
   id          String @id @default(uuid()) @db.Uuid
   name        String @unique @db.VarChar(50)
@@ -66,6 +36,103 @@ model InvitationStatus {
   @@map("invitation_statuses")
 }
 
+model ProjectStatus {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  code        String @unique @db.VarChar(50)
+  description String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  projects Project[]
+
+  @@map("project_statuses")
+}
+
+model TaskStatus {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  code        String @unique @db.VarChar(50)
+  position    Int    @default(0)
+  description String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  tasks Task[]
+
+  @@map("task_statuses")
+}
+
+model TaskPriority {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  code        String @unique @db.VarChar(50)
+  description String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  tasks Task[]
+
+  @@map("task_priorities")
+}
+
+model NotificationType {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  code        String @unique @db.VarChar(50)
+  description String @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  notifications Notification[]
+
+  @@map("notification_types")
+}
+
+model User {
+  id           String @id @default(uuid()) @db.Uuid
+  email        String @unique @db.VarChar(320)
+  name         String @db.VarChar(120)
+  passwordHash String @map("password_hash") @db.VarChar(255)
+  avatarUrl    String @map("avatar_url") @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  membership          Membership?
+  invitationsSent     Invitation[]    @relation("InvitationInviter")
+  invitationsReceived Invitation[]    @relation("InvitationInvitee")
+  refreshToken        RefreshToken?
+  managedProjects     Project[]       @relation("ProjectPm")
+  createdProjects     Project[]       @relation("ProjectCreator")
+  projectMembers      ProjectMember[]
+  assignedTasks       Task[]          @relation("TaskAssignee")
+  createdTasks        Task[]          @relation("TaskCreator")
+  taskWatchers        TaskWatcher[]
+  comments            Comment[]
+  attachments         Attachment[]
+  notifications       Notification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique @db.Text
+  expiresAt DateTime @map("expires_at") @db.Timestamptz()
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
 model Membership {
   id String @id @default(uuid()) @db.Uuid
 
@@ -82,7 +149,7 @@ model Membership {
 }
 
 model Invitation {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
   email      String    @db.VarChar(320)
   token      String    @unique @db.Text
   acceptedAt DateTime? @map("accepted_at") @db.Timestamptz()
@@ -104,4 +171,177 @@ model Invitation {
 
   @@index([email, token])
   @@map("invitations")
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(160)
+  description String?
+  startDate   DateTime? @map("start_date") @db.Timestamptz()
+  endDate     DateTime? @map("end_date") @db.Timestamptz()
+  pmId        String?   @map("pm_id") @db.Uuid
+  statusId    String    @map("status_id") @db.Uuid
+  createdById String?   @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  pm            User?           @relation("ProjectPm", fields: [pmId], references: [id])
+  status        ProjectStatus   @relation(fields: [statusId], references: [id])
+  createdBy     User?           @relation("ProjectCreator", fields: [createdById], references: [id])
+  members       ProjectMember[]
+  tasks         Task[]
+  notifications Notification[]
+
+  @@index([pmId])
+  @@index([statusId])
+  @@index([startDate, endDate])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId String   @map("project_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Task {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(200)
+  description String?
+  projectId   String    @map("project_id") @db.Uuid
+  assigneeId  String?   @map("assignee_id") @db.Uuid
+  priorityId  String    @map("priority_id") @db.Uuid
+  statusId    String    @map("status_id") @db.Uuid
+  startDate   DateTime? @map("start_date") @db.Timestamptz()
+  dueDate     DateTime? @map("due_date") @db.Timestamptz()
+  createdById String?   @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  project       Project        @relation(fields: [projectId], references: [id])
+  assignee      User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  priority      TaskPriority   @relation(fields: [priorityId], references: [id])
+  status        TaskStatus     @relation(fields: [statusId], references: [id])
+  createdBy     User?          @relation("TaskCreator", fields: [createdById], references: [id])
+  subtasks      Subtask[]
+  watchers      TaskWatcher[]
+  comments      Comment[]
+  attachments   Attachment[]
+  notifications Notification[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([statusId])
+  @@index([dueDate])
+  @@index([projectId, statusId])
+  @@index([assigneeId, statusId])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  title     String   @db.VarChar(200)
+  isDone    Boolean  @default(false) @map("is_done")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@index([taskId])
+  @@index([taskId, position])
+  @@map("subtasks")
+}
+
+model TaskWatcher {
+  taskId    String   @map("task_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@id([taskId, userId])
+  @@index([userId])
+  @@map("task_watchers")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  task   Task @relation(fields: [taskId], references: [id])
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model Attachment {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @map("task_id") @db.Uuid
+  uploadedById String   @map("uploaded_by") @db.Uuid
+  fileName     String   @map("file_name") @db.VarChar(255)
+  mimeType     String?  @map("mime_type") @db.VarChar(127)
+  sizeBytes    Int      @default(0) @map("size_bytes")
+  storageKey   String   @map("storage_key") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  task       Task @relation(fields: [taskId], references: [id])
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@map("attachments")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  typeId    String    @map("type_id") @db.Uuid
+  title     String    @db.VarChar(200)
+  body      String?
+  taskId    String?   @map("task_id") @db.Uuid
+  projectId String?   @map("project_id") @db.Uuid
+  readAt    DateTime? @map("read_at") @db.Timestamptz()
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user    User                     @relation(fields: [userId], references: [id])
+  type    NotificationType         @relation(fields: [typeId], references: [id])
+  task    Task?                    @relation(fields: [taskId], references: [id])
+  project Project?                 @relation(fields: [projectId], references: [id])
+  outbox  NotificationEmailOutbox?
+
+  @@index([userId, readAt])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationEmailOutbox {
+  id             String    @id @default(uuid()) @db.Uuid
+  notificationId String    @unique @map("notification_id") @db.Uuid
+  recipientEmail String    @map("recipient_email") @db.VarChar(320)
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz()
+  retries        Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  notification Notification @relation(fields: [notificationId], references: [id])
+
+  @@index([sentAt, retries])
+  @@map("notification_email_outbox")
 }

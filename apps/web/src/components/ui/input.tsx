@@ -3,13 +3,21 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "./cn";
 
 function FieldRoot(props: ComponentProps<typeof BaseField.Root>) {
-  return <BaseField.Root className={cn("flex flex-col gap-2", props.className)} {...props} />;
+  return (
+    <BaseField.Root
+      className={cn("flex flex-col gap-2", props.className)}
+      {...props}
+    />
+  );
 }
 
 function FieldLabel(props: ComponentProps<typeof BaseField.Label>) {
   return (
     <BaseField.Label
-      className={cn("text-sm font-semibold leading-[1.29] tracking-body text-ink", props.className)}
+      className={cn(
+        "text-sm font-semibold leading-[1.29] tracking-body text-ink",
+        props.className,
+      )}
       {...props}
     />
   );
@@ -18,7 +26,10 @@ function FieldLabel(props: ComponentProps<typeof BaseField.Label>) {
 function FieldDescription(props: ComponentProps<typeof BaseField.Description>) {
   return (
     <BaseField.Description
-      className={cn("text-xs leading-[1.33] tracking-caption text-ink-subtle", props.className)}
+      className={cn(
+        "text-xs leading-[1.33] tracking-caption text-ink-subtle",
+        props.className,
+      )}
       {...props}
     />
   );
@@ -27,7 +38,10 @@ function FieldDescription(props: ComponentProps<typeof BaseField.Description>) {
 function FieldError(props: ComponentProps<typeof BaseField.Error>) {
   return (
     <BaseField.Error
-      className={cn("text-xs leading-[1.33] tracking-caption text-error", props.className)}
+      className={cn(
+        "text-xs leading-[1.33] tracking-caption text-error",
+        props.className,
+      )}
       {...props}
     />
   );
