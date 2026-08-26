@@ -5,9 +5,13 @@ export type ClassNamePart<T> =
   | null
   | undefined;
 
+export function cn(...parts: Array<string | false | null | undefined>): string;
+export function cn<T>(
+  ...parts: Array<ClassNamePart<T>>
+): string | ((state: T) => string);
 export function cn<T = unknown>(
   ...parts: Array<ClassNamePart<T>>
-): string | ((state: T) => string | undefined) {
+): string | ((state: T) => string) {
   const strings: string[] = [];
   const fns: Array<(state: T) => string | undefined> = [];
 

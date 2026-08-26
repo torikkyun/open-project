@@ -74,7 +74,7 @@ function DatePickerLabel({ className, ...props }: DatePickerLabelProps) {
   return (
     <AriaLabel
       className={cn(
-        "text-body-sm font-semibold text-ink group-data-[disabled]/date-picker:text-ink-subtle",
+        "text-body-sm font-normal text-ink group-data-[disabled]/date-picker:text-ink-subtle",
         className,
       )}
       {...props}

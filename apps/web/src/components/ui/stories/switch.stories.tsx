@@ -1,11 +1,11 @@
-import { Switch } from "../switch";
+import { Switch, type SwitchRootProps } from "../switch";
 import { StorySection } from "./story-section";
 
 function Preference({
   children,
   description,
   ...props
-}: Switch.Root.Props & {
+}: SwitchRootProps & {
   children: string;
   description: string;
 }) {

@@ -23,7 +23,7 @@ function FieldLabel({ className, ...props }: FieldLabelProps) {
   return (
     <BaseField.Label
       className={cn(
-        "text-sm font-semibold leading-[1.29] tracking-body text-ink data-[disabled]:text-ink-subtle",
+        "text-body-sm font-normal tracking-body text-ink data-[disabled]:text-ink-subtle",
         className,
       )}
       {...props}

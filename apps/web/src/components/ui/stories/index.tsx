@@ -5,6 +5,7 @@ import { DatePickerStories } from "./date-picker.stories";
 import { DialogStories } from "./dialog.stories";
 import { DrawerStories } from "./drawer.stories";
 import { FieldStories } from "./field.stories";
+import { FormConventionsStories } from "./form-conventions.stories";
 import { InputStories } from "./input.stories";
 import { PopoverStories } from "./popover.stories";
 import { SelectStories } from "./select.stories";
@@ -23,6 +24,7 @@ const storyLinks = [
   ["date-picker", "Date picker"],
   ["input", "Input"],
   ["field", "Field"],
+  ["form-conventions", "Form conventions"],
   ["select", "Select"],
   ["slider", "Slider"],
   ["table", "Table"],
@@ -68,6 +70,7 @@ export function AllStories() {
       <DatePickerStories />
       <InputStories />
       <FieldStories />
+      <FormConventionsStories />
       <SelectStories />
       <SliderStories />
       <TableStories />
