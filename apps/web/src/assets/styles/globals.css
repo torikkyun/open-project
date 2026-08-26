@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../components/**/*.{ts,tsx}";
 
 @theme {
   /* Brand & accent */
@@ -14,6 +15,7 @@
   --color-surface-2: #e0e0e0;
   --color-inverse-canvas: #161616;
   --color-inverse-surface-1: #262626;
+  --color-scrim: rgb(0 0 0 / 50%);
 
   /* Text */
   --color-ink: #161616;
@@ -21,6 +23,7 @@
   --color-ink-subtle: #8c8c8c;
   --color-inverse-ink: #ffffff;
   --color-inverse-ink-muted: #c6c6c6;
+  --color-on-error: #ffffff;
 
   /* Lines */
   --color-hairline: #e0e0e0;
@@ -31,17 +34,80 @@
   --color-warning: #f1c21b;
   --color-error: #da1e28;
   --color-error-hover: #ba1b23;
+  --color-error-pressed: #a2191f;
+  --color-secondary-pressed: #000000;
   --color-info: #0f62fe;
+  --color-focus: #0f62fe;
+  --color-focus-underline: #161616;
+  --color-focus-error: #da1e28;
 
   /* Typography */
   --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-display-xl: 4.75rem;
+  --text-display-xl--line-height: 1.17;
+  --text-display-xl--font-weight: 300;
+  --text-display-lg: 3.75rem;
+  --text-display-lg--line-height: 1.17;
+  --text-display-lg--font-weight: 300;
+  --text-display-md: 2.625rem;
+  --text-display-md--line-height: 1.2;
+  --text-display-md--font-weight: 300;
+  --text-headline: 2rem;
+  --text-headline--line-height: 1.25;
+  --text-headline--font-weight: 400;
+  --text-card-title: 1.5rem;
+  --text-card-title--line-height: 1.33;
+  --text-card-title--font-weight: 400;
+  --text-subhead: 1.25rem;
+  --text-subhead--line-height: 1.4;
+  --text-subhead--font-weight: 400;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.5;
+  --text-body-lg--font-weight: 400;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+  --text-body--font-weight: 400;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.29;
+  --text-body-sm--font-weight: 400;
+  --text-body-emphasis: 0.875rem;
+  --text-body-emphasis--line-height: 1.29;
+  --text-body-emphasis--font-weight: 600;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.33;
+  --text-caption--font-weight: 400;
+  --text-button: 0.875rem;
+  --text-button--line-height: 1.29;
+  --text-button--font-weight: 400;
+  --text-eyebrow: 0.875rem;
+  --text-eyebrow--line-height: 1.29;
+  --text-eyebrow--font-weight: 400;
   --tracking-body: 0.16px;
   --tracking-caption: 0.32px;
+
+  /* Spacing */
+  --spacing-xxs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  --spacing-section: 6rem;
+
+  /* Radius */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+  --radius-full: 9999px;
 }
 
 @layer base {
   body {
-    @apply bg-canvas font-sans text-base tracking-body text-ink antialiased;
+    @apply bg-canvas font-sans text-body tracking-body text-ink antialiased;
   }
 
   button {

@@ -1,6 +1,7 @@
 {
   "extends": "@repo/typescript-config/nest-js",
   "compilerOptions": {
+    "outDir": "./dist",
     "paths": {
       "@/*": ["./src/*"],
       "@/prisma/*": ["./src/generated/prisma/*"]
