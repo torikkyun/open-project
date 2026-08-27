@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { CookieService } from "./cookie.service";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -18,21 +17,21 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
       useFactory: (configService: ConfigService) => {
         const jwt = configService.getOrThrow<{
           jwtSecret: string;
-          jwtCookieExpiration: string;
+          jwtExpiration: string;
         }>("jwt", {
           infer: true,
         });
         return {
           secret: jwt.jwtSecret,
           signOptions: {
-            expiresIn: jwt.jwtCookieExpiration,
+            expiresIn: jwt.jwtExpiration,
           },
         };
       },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, CookieService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

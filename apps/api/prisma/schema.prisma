@@ -1,347 +1,415 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+    provider = "postgresql"
 }
 
-model UserRole {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  description String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  memberships Membership[]
-  invitations Invitation[]
-
-  @@map("user_roles")
+enum UserRole {
+    admin
+    project_manager
+    member
+    guest
 }
 
-model InvitationStatus {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  description String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  invitations Invitation[]
-
-  @@map("invitation_statuses")
+enum ProjectRole {
+    manager
+    member
+    guest
 }
 
-model ProjectStatus {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  description String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  projects Project[]
-
-  @@map("project_statuses")
+enum ProjectStatus {
+    not_started
+    in_progress
+    on_hold
+    completed
+    archived
 }
 
-model TaskStatus {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  position    Int    @default(0)
-  description String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  tasks Task[]
-
-  @@map("task_statuses")
+enum TaskStatus {
+    todo
+    in_progress
+    review
+    done
+    canceled
 }
 
-model TaskPriority {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  description String @db.VarChar(255)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  tasks Task[]
-
-  @@map("task_priorities")
+enum Priority {
+    low
+    medium
+    high
+    critical
 }
 
-model NotificationType {
-  id          String @id @default(uuid()) @db.Uuid
-  name        String @unique @db.VarChar(50)
-  code        String @unique @db.VarChar(50)
-  description String @db.VarChar(255)
+enum DependencyType {
+    FS
+    FF
+    SS
+    SF
+}
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+enum NotificationType {
+    task_assigned
+    task_updated
+    task_status_changed
+    comment_added
+    task_review_requested
+    task_review_approved
+    task_review_rejected
+    task_overdue
+    project_added
+}
 
-  notifications Notification[]
-
-  @@map("notification_types")
+enum FieldType {
+    text
+    number
+    dropdown
+    date
+    checkbox
 }
 
 model User {
-  id           String @id @default(uuid()) @db.Uuid
-  email        String @unique @db.VarChar(320)
-  name         String @db.VarChar(120)
-  passwordHash String @map("password_hash") @db.VarChar(255)
-  avatarUrl    String @map("avatar_url") @db.VarChar(255)
+    id           String    @id @default(uuid()) @db.Uuid
+    name         String    @db.VarChar(255)
+    email        String    @unique @db.VarChar(255)
+    passwordHash String    @map("password_hash") @db.VarChar(255)
+    role         UserRole  @default(member)
+    departmentId String?   @map("department_id") @db.Uuid
+    createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt    DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+    department       Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    createdProjects  Project[]       @relation("ProjectCreator")
+    projectMembers   ProjectMember[]
+    taskAssignees    TaskAssignee[]
+    comments         Comment[]
+    attachments      Attachment[]
+    notifications    Notification[]
+    createdTemplates Template[]      @relation("TemplateCreator")
 
-  membership          Membership?
-  invitationsSent     Invitation[]    @relation("InvitationInviter")
-  invitationsReceived Invitation[]    @relation("InvitationInvitee")
-  refreshToken        RefreshToken?
-  managedProjects     Project[]       @relation("ProjectPm")
-  createdProjects     Project[]       @relation("ProjectCreator")
-  projectMembers      ProjectMember[]
-  assignedTasks       Task[]          @relation("TaskAssignee")
-  createdTasks        Task[]          @relation("TaskCreator")
-  taskWatchers        TaskWatcher[]
-  comments            Comment[]
-  attachments         Attachment[]
-  notifications       Notification[]
-
-  @@map("users")
+    @@index([departmentId])
+    @@index([role])
+    @@index([deletedAt])
+    @@index([createdAt])
+    @@map("users")
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  token     String   @unique @db.Text
-  expiresAt DateTime @map("expires_at") @db.Timestamptz()
+model Department {
+    id        String    @id @default(uuid()) @db.Uuid
+    name      String    @db.VarChar(255)
+    createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+    users User[]
 
-  userId String @unique @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@map("refresh_tokens")
-}
-
-model Membership {
-  id String @id @default(uuid()) @db.Uuid
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
-
-  roleId String   @map("role_id") @db.Uuid
-  role   UserRole @relation(fields: [roleId], references: [id])
-
-  userId String @unique @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@map("memberships")
-}
-
-model Invitation {
-  id         String    @id @default(uuid()) @db.Uuid
-  email      String    @db.VarChar(320)
-  token      String    @unique @db.Text
-  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz()
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz()
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-
-  roleId String   @map("role_id") @db.Uuid
-  role   UserRole @relation(fields: [roleId], references: [id])
-
-  statusId String           @map("status_id") @db.Uuid
-  status   InvitationStatus @relation(fields: [statusId], references: [id])
-
-  invitedById String? @map("invited_by") @db.Uuid
-  invitedBy   User?   @relation("InvitationInviter", fields: [invitedById], references: [id])
-
-  userId String? @db.Uuid
-  user   User?   @relation("InvitationInvitee", fields: [userId], references: [id])
-
-  @@index([email, token])
-  @@map("invitations")
+    @@index([name])
+    @@index([deletedAt])
+    @@map("departments")
 }
 
 model Project {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.VarChar(160)
-  description String?
-  startDate   DateTime? @map("start_date") @db.Timestamptz()
-  endDate     DateTime? @map("end_date") @db.Timestamptz()
-  pmId        String?   @map("pm_id") @db.Uuid
-  statusId    String    @map("status_id") @db.Uuid
-  createdById String?   @map("created_by") @db.Uuid
+    id          String        @id @default(uuid()) @db.Uuid
+    name        String        @db.VarChar(255)
+    description String?
+    startDate   DateTime      @map("start_date") @db.Date
+    endDate     DateTime      @map("end_date") @db.Date
+    status      ProjectStatus @default(not_started)
+    createdById String        @map("created_by") @db.Uuid
+    templateId  String?       @map("template_id") @db.Uuid
+    createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt   DateTime?     @map("deleted_at") @db.Timestamp(3)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+    createdBy   User            @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+    template    Template?       @relation(fields: [templateId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    members     ProjectMember[]
+    tasks       Task[]
+    milestones  Milestone[]
+    attachments Attachment[]
 
-  pm            User?           @relation("ProjectPm", fields: [pmId], references: [id])
-  status        ProjectStatus   @relation(fields: [statusId], references: [id])
-  createdBy     User?           @relation("ProjectCreator", fields: [createdById], references: [id])
-  members       ProjectMember[]
-  tasks         Task[]
-  notifications Notification[]
-
-  @@index([pmId])
-  @@index([statusId])
-  @@index([startDate, endDate])
-  @@map("projects")
+    @@index([status])
+    @@index([createdById])
+    @@index([templateId])
+    @@index([startDate])
+    @@index([endDate])
+    @@index([deletedAt])
+    @@index([createdAt])
+    @@map("projects")
 }
 
 model ProjectMember {
-  projectId String   @map("project_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+    id         String      @id @default(uuid()) @db.Uuid
+    projectId  String      @map("project_id") @db.Uuid
+    userId     String      @map("user_id") @db.Uuid
+    role       ProjectRole @default(member)
+    canView    Boolean     @default(true) @map("can_view")
+    canComment Boolean     @default(false) @map("can_comment")
+    canUpload  Boolean     @default(false) @map("can_upload")
+    createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt  DateTime?   @map("deleted_at") @db.Timestamp(3)
 
-  project Project @relation(fields: [projectId], references: [id])
-  user    User    @relation(fields: [userId], references: [id])
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  @@id([projectId, userId])
-  @@index([userId])
-  @@map("project_members")
+    @@unique([projectId, userId])
+    @@index([projectId])
+    @@index([userId])
+    @@index([deletedAt])
+    @@map("project_members")
 }
 
 model Task {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.VarChar(200)
-  description String?
-  projectId   String    @map("project_id") @db.Uuid
-  assigneeId  String?   @map("assignee_id") @db.Uuid
-  priorityId  String    @map("priority_id") @db.Uuid
-  statusId    String    @map("status_id") @db.Uuid
-  startDate   DateTime? @map("start_date") @db.Timestamptz()
-  dueDate     DateTime? @map("due_date") @db.Timestamptz()
-  createdById String?   @map("created_by") @db.Uuid
+    id              String     @id @default(uuid()) @db.Uuid
+    projectId       String     @map("project_id") @db.Uuid
+    parentTaskId    String?    @map("parent_task_id") @db.Uuid
+    title           String     @db.VarChar(255)
+    description     String?
+    priority        Priority   @default(medium)
+    estimatedHours  Decimal?   @map("estimated_hours") @db.Decimal(10, 2)
+    actualHours     Decimal?   @map("actual_hours") @db.Decimal(10, 2)
+    startDate       DateTime?  @map("start_date") @db.Date
+    endDate         DateTime?  @map("end_date") @db.Date
+    progressPercent Int        @default(0) @map("progress_percent")
+    status          TaskStatus @default(todo)
+    isMilestone     Boolean    @default(false) @map("is_milestone")
+    createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt       DateTime?  @map("deleted_at") @db.Timestamp(3)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+    project                 Project           @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    parentTask              Task?             @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    subtasks                Task[]            @relation("TaskHierarchy")
+    assignees               TaskAssignee[]
+    predecessorDependencies TaskDependency[]  @relation("TaskPredecessor")
+    successorDependencies   TaskDependency[]  @relation("TaskSuccessor")
+    milestones              Milestone[]
+    comments                Comment[]
+    attachments             Attachment[]
+    customFields            TaskCustomField[]
 
-  project       Project        @relation(fields: [projectId], references: [id])
-  assignee      User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  priority      TaskPriority   @relation(fields: [priorityId], references: [id])
-  status        TaskStatus     @relation(fields: [statusId], references: [id])
-  createdBy     User?          @relation("TaskCreator", fields: [createdById], references: [id])
-  subtasks      Subtask[]
-  watchers      TaskWatcher[]
-  comments      Comment[]
-  attachments   Attachment[]
-  notifications Notification[]
-
-  @@index([projectId])
-  @@index([assigneeId])
-  @@index([statusId])
-  @@index([dueDate])
-  @@index([projectId, statusId])
-  @@index([assigneeId, statusId])
-  @@map("tasks")
+    @@index([projectId])
+    @@index([parentTaskId])
+    @@index([status])
+    @@index([priority])
+    @@index([startDate])
+    @@index([endDate])
+    @@index([isMilestone])
+    @@index([deletedAt])
+    @@index([createdAt])
+    @@map("tasks")
 }
 
-model Subtask {
-  id        String   @id @default(uuid()) @db.Uuid
-  taskId    String   @map("task_id") @db.Uuid
-  title     String   @db.VarChar(200)
-  isDone    Boolean  @default(false) @map("is_done")
-  position  Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+model TaskAssignee {
+    id        String    @id @default(uuid()) @db.Uuid
+    taskId    String    @map("task_id") @db.Uuid
+    userId    String    @map("user_id") @db.Uuid
+    createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  task Task @relation(fields: [taskId], references: [id])
+    task Task @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  @@index([taskId])
-  @@index([taskId, position])
-  @@map("subtasks")
+    @@unique([taskId, userId])
+    @@index([taskId])
+    @@index([userId])
+    @@index([deletedAt])
+    @@map("task_assignees")
 }
 
-model TaskWatcher {
-  taskId    String   @map("task_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+model TaskDependency {
+    id                String         @id @default(uuid()) @db.Uuid
+    predecessorTaskId String         @map("predecessor_task_id") @db.Uuid
+    successorTaskId   String         @map("successor_task_id") @db.Uuid
+    dependencyType    DependencyType @default(FS) @map("dependency_type")
+    lagDays           Int            @default(0) @map("lag_days")
+    createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt         DateTime?      @map("deleted_at") @db.Timestamp(3)
 
-  task Task @relation(fields: [taskId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+    predecessorTask Task @relation("TaskPredecessor", fields: [predecessorTaskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    successorTask   Task @relation("TaskSuccessor", fields: [successorTaskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  @@id([taskId, userId])
-  @@index([userId])
-  @@map("task_watchers")
+    @@unique([predecessorTaskId, successorTaskId])
+    @@index([predecessorTaskId])
+    @@index([successorTaskId])
+    @@index([deletedAt])
+    @@map("task_dependencies")
+}
+
+model Milestone {
+    id          String    @id @default(uuid()) @db.Uuid
+    projectId   String    @map("project_id") @db.Uuid
+    name        String    @db.VarChar(255)
+    description String?
+    dueDate     DateTime  @map("due_date") @db.Date
+    createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt   DateTime? @map("deleted_at") @db.Timestamp(3)
+
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    task    Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    taskId  String? @map("task_id") @db.Uuid
+
+    @@index([projectId])
+    @@index([dueDate])
+    @@index([deletedAt])
+    @@map("milestones")
 }
 
 model Comment {
-  id        String   @id @default(uuid()) @db.Uuid
-  taskId    String   @map("task_id") @db.Uuid
-  authorId  String   @map("author_id") @db.Uuid
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+    id              String    @id @default(uuid()) @db.Uuid
+    taskId          String    @map("task_id") @db.Uuid
+    userId          String    @map("user_id") @db.Uuid
+    parentCommentId String?   @map("parent_comment_id") @db.Uuid
+    content         String    @db.Text
+    createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt       DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  task   Task @relation(fields: [taskId], references: [id])
-  author User @relation(fields: [authorId], references: [id])
+    task        Task         @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user        User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    parent      Comment?     @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    replies     Comment[]    @relation("CommentReplies")
+    attachments Attachment[]
 
-  @@index([taskId])
-  @@index([authorId])
-  @@map("comments")
+    @@index([taskId])
+    @@index([userId])
+    @@index([parentCommentId])
+    @@index([createdAt])
+    @@index([deletedAt])
+    @@map("comments")
 }
 
 model Attachment {
-  id           String   @id @default(uuid()) @db.Uuid
-  taskId       String   @map("task_id") @db.Uuid
-  uploadedById String   @map("uploaded_by") @db.Uuid
-  fileName     String   @map("file_name") @db.VarChar(255)
-  mimeType     String?  @map("mime_type") @db.VarChar(127)
-  sizeBytes    Int      @default(0) @map("size_bytes")
-  storageKey   String   @map("storage_key") @db.Text
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+    id        String    @id @default(uuid()) @db.Uuid
+    projectId String?   @map("project_id") @db.Uuid
+    taskId    String?   @map("task_id") @db.Uuid
+    commentId String?   @map("comment_id") @db.Uuid
+    userId    String    @map("user_id") @db.Uuid
+    fileName  String    @map("file_name") @db.VarChar(255)
+    filePath  String    @map("file_path") @db.VarChar(500)
+    fileSize  BigInt    @map("file_size") @db.BigInt
+    mimeType  String?   @map("mime_type") @db.VarChar(100)
+    createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  task       Task @relation(fields: [taskId], references: [id])
-  uploadedBy User @relation(fields: [uploadedById], references: [id])
+    project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    task    Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user    User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@index([taskId])
-  @@map("attachments")
+    @@index([projectId])
+    @@index([taskId])
+    @@index([commentId])
+    @@index([userId])
+    @@index([createdAt])
+    @@index([deletedAt])
+    @@map("attachments")
 }
 
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  typeId    String    @map("type_id") @db.Uuid
-  title     String    @db.VarChar(200)
-  body      String?
-  taskId    String?   @map("task_id") @db.Uuid
-  projectId String?   @map("project_id") @db.Uuid
-  readAt    DateTime? @map("read_at") @db.Timestamptz()
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+    id        String           @id @default(uuid()) @db.Uuid
+    userId    String           @map("user_id") @db.Uuid
+    type      NotificationType
+    content   String           @db.Text
+    isRead    Boolean          @default(false) @map("is_read")
+    readAt    DateTime?        @map("read_at") @db.Timestamp(3)
+    createdAt DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt DateTime?        @map("deleted_at") @db.Timestamp(3)
 
-  user    User                     @relation(fields: [userId], references: [id])
-  type    NotificationType         @relation(fields: [typeId], references: [id])
-  task    Task?                    @relation(fields: [taskId], references: [id])
-  project Project?                 @relation(fields: [projectId], references: [id])
-  outbox  NotificationEmailOutbox?
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  @@index([userId, readAt])
-  @@index([userId])
-  @@index([createdAt])
-  @@map("notifications")
+    @@index([userId])
+    @@index([isRead])
+    @@index([createdAt])
+    @@index([deletedAt])
+    @@map("notifications")
 }
 
-model NotificationEmailOutbox {
-  id             String    @id @default(uuid()) @db.Uuid
-  notificationId String    @unique @map("notification_id") @db.Uuid
-  recipientEmail String    @map("recipient_email") @db.VarChar(320)
-  sentAt         DateTime? @map("sent_at") @db.Timestamptz()
-  retries        Int       @default(0)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+model Template {
+    id          String    @id @default(uuid()) @db.Uuid
+    name        String    @db.VarChar(255)
+    description String?
+    createdById String    @map("created_by") @db.Uuid
+    createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt   DateTime? @map("deleted_at") @db.Timestamp(3)
 
-  notification Notification @relation(fields: [notificationId], references: [id])
+    createdBy User           @relation("TemplateCreator", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: Cascade)
+    projects  Project[]
+    tasks     TemplateTask[]
 
-  @@index([sentAt, retries])
-  @@map("notification_email_outbox")
+    @@index([createdById])
+    @@index([name])
+    @@index([deletedAt])
+    @@map("templates")
+}
+
+model TemplateTask {
+    id                   String    @id @default(uuid()) @db.Uuid
+    templateId           String    @map("template_id") @db.Uuid
+    parentTemplateTaskId String?   @map("parent_template_task_id") @db.Uuid
+    title                String    @db.VarChar(255)
+    description          String?
+    estimatedHours       Decimal?  @map("estimated_hours") @db.Decimal(10, 2)
+    startOffsetDays      Int       @default(0) @map("start_offset_days")
+    durationDays         Int       @default(1) @map("duration_days")
+    priority             Priority  @default(medium)
+    isMilestone          Boolean   @default(false) @map("is_milestone")
+    createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt            DateTime? @map("deleted_at") @db.Timestamp(3)
+
+    template Template       @relation(fields: [templateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    parent   TemplateTask?  @relation("TemplateTaskHierarchy", fields: [parentTemplateTaskId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+    subtasks TemplateTask[] @relation("TemplateTaskHierarchy")
+
+    @@index([templateId])
+    @@index([parentTemplateTaskId])
+    @@index([deletedAt])
+    @@map("template_tasks")
+}
+
+model CustomField {
+    id         String    @id @default(uuid()) @db.Uuid
+    name       String    @db.VarChar(255)
+    fieldType  FieldType @map("field_type")
+    options    String?
+    isRequired Boolean   @default(false) @map("is_required")
+    createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt  DateTime? @map("deleted_at") @db.Timestamp(3)
+
+    taskValues TaskCustomField[]
+
+    @@index([fieldType])
+    @@index([deletedAt])
+    @@map("custom_fields")
+}
+
+model TaskCustomField {
+    id            String    @id @default(uuid()) @db.Uuid
+    taskId        String    @map("task_id") @db.Uuid
+    customFieldId String    @map("custom_field_id") @db.Uuid
+    value         String    @db.Text
+    createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+    updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+    deletedAt     DateTime? @map("deleted_at") @db.Timestamp(3)
+
+    task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    customField CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@unique([taskId, customFieldId])
+    @@index([taskId])
+    @@index([customFieldId])
+    @@index([deletedAt])
+    @@map("task_custom_fields")
 }

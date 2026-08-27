@@ -4,12 +4,11 @@ import { HealthModule } from "./health";
 import { ConfigModule } from "@nestjs/config";
 import { configs } from "./configs";
 import { AuthModule } from "./features/auth/auth.module";
+import { ProjectsModule } from "./features/projects";
+import { UsersDepartmentsModule } from "./features/users-departments/users-departments.module";
 import { APP_GUARD } from "@nestjs/core";
 import { RolesGuard } from "./features/auth/guards/roles.guard";
 import { JwtGuard } from "./features/auth/guards/jwt.guard";
-import { UsersModule } from "./features/users/users.module";
-import { MembersModule } from "./features/members/members.module";
-import { InvitationsModule } from "./features/invitations/invitations.module";
 
 @Module({
   imports: [
@@ -23,9 +22,8 @@ import { InvitationsModule } from "./features/invitations/invitations.module";
     PrismaModule,
     HealthModule,
     AuthModule,
-    UsersModule,
-    MembersModule,
-    InvitationsModule,
+    ProjectsModule,
+    UsersDepartmentsModule,
   ],
   providers: [
     {

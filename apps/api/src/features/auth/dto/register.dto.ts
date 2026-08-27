@@ -1,10 +1,31 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, Length } from "class-validator";
-import { LoginDto } from "./login.dto";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
-export class RegisterDto extends LoginDto {
+export class CreateAuthDto {
   @IsNotEmpty({ message: "Tên không được để trống" })
-  @Length(2, 120, { message: "Tên phải từ 2 đến 120 ký tự" })
-  @ApiProperty({ example: "Nguyen Van A" })
+  @IsString()
+  @ApiProperty({ example: "Nguyễn Văn A" })
   name!: string;
+
+  @IsEmail({}, { message: "Email không hợp lệ" })
+  @ApiProperty({ example: "nguyenvana@gmail.com" })
+  email!: string;
+
+  @IsNotEmpty({ message: "Mật khẩu không được để trống" })
+  @MinLength(8, { message: "Mật khẩu phải từ 8 ký tự trở lên" })
+  @ApiProperty({ example: "thisisapassword123" })
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional({ example: "invite-token" })
+  invite_token?: string;
 }
+
+export class RegisterDto extends CreateAuthDto {}

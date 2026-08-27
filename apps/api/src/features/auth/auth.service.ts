@@ -4,153 +4,149 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { PrismaService } from "@/infra/db";
-import { JwtService } from "@nestjs/jwt";
-import { RegisterDto } from "./dto/register.dto";
+import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import { RefreshDto, RegisterDto } from "./dto";
 import { hashPassword, verifyPassword } from "@/common/utils/hash.util";
 import { AuthenticatedUser } from "@/common/types/auth-user.type";
-import { Prisma } from "@/generated/prisma/client";
-import { randomBytes } from "crypto";
-import { CookieService } from "./cookie.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly cookieService: CookieService,
+    private readonly configService: ConfigService,
   ) {}
 
-  private async upsertRefreshToken(
-    userId: string,
-    tx?: Prisma.TransactionClient,
-  ) {
-    const client = tx ?? this.prisma;
-    const token = randomBytes(64).toString("hex");
-    const expiresAt = new Date(
-      Date.now() + this.cookieService.getRefreshTokenMaxAge(),
-    );
-
-    const result = await client.refreshToken.upsert({
-      where: { userId },
-      create: {
-        token,
-        expiresAt,
-        user: { connect: { id: userId } },
-      },
-      update: {
-        token,
-        expiresAt,
-      },
-      select: { token: true },
+  // TODO: Kiểm tra invite token (của guest) trước khi tạo user
+  async register(registerDto: RegisterDto) {
+    const existingUser = await this.prisma.user.findFirst({
+      where: { email: registerDto.email, deletedAt: null },
     });
 
-    return result.token;
+    if (existingUser) {
+      throw new ConflictException("Email đã tồn tại");
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        name: registerDto.name,
+        email: registerDto.email,
+        passwordHash: await hashPassword(registerDto.password),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return user;
   }
 
   async validateUser(
     email: string,
     password: string,
   ): Promise<AuthenticatedUser> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, name: true, passwordHash: true },
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
     });
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      throw new UnauthorizedException("Email hoặc mật khẩu không đúng");
+      throw new UnauthorizedException("Thông tin đăng nhập không hợp lệ");
     }
 
     return { id: user.id, email: user.email, name: user.name };
   }
 
-  async register({ name, email, password }: RegisterDto) {
-    try {
-      const user = await this.prisma.user.create({
-        data: {
-          name,
-          email,
-          passwordHash: await hashPassword(password),
-          avatarUrl: `https://api.dicebear.com/10.x/initials/svg?seed=${encodeURIComponent(name)}`,
+  async login(authenticatedUser: AuthenticatedUser) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: authenticatedUser.id, deletedAt: null },
+      include: {
+        projectMembers: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: {
+            projectId: true,
+            canView: true,
+            canComment: true,
+            canUpload: true,
+          },
         },
-        select: { id: true, email: true, name: true },
-      });
-
-      return this.login({ id: user.id, email: user.email, name: user.name });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        throw new ConflictException("Email đã được sử dụng");
-      }
-      throw error;
-    }
-  }
-
-  private async getUserRoles(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: { membership: { include: { role: true } } },
+      },
     });
 
-    const role = user?.membership?.role;
-    return role ? [role.code, role.name] : [];
-  }
+    if (!user) {
+      throw new UnauthorizedException("Thông tin đăng nhập không hợp lệ");
+    }
 
-  async login(user: AuthenticatedUser) {
-    const roles = await this.getUserRoles(user.id);
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
-      roles,
+      name: user.name,
+      roles: [user.role],
+      type: "access",
     });
-
-    const refreshToken = await this.upsertRefreshToken(user.id);
-
-    return { accessToken, refreshToken };
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: user.id, type: "refresh" },
+      {
+        expiresIn: this.configService.getOrThrow<string>(
+          "jwt.jwtRefreshExpiration",
+          { infer: true },
+        ) as JwtSignOptions["expiresIn"],
+      },
+    );
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department_id: user.departmentId,
+        project_permissions: user.projectMembers.map((projectMember) => ({
+          project_id: projectMember.projectId,
+          can_view: projectMember.canView,
+          can_comment: projectMember.canComment,
+          can_upload: projectMember.canUpload,
+        })),
+      },
+    };
   }
 
-  async refresh(token: string) {
-    if (!token) {
+  async refresh(refreshDto: RefreshDto) {
+    const payload = await this.jwtService.verifyAsync<{
+      sub: string;
+      type: string;
+    }>(refreshDto.refresh_token);
+
+    if (payload.type !== "refresh") {
       throw new UnauthorizedException("Refresh token không hợp lệ");
     }
-    const result = await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.refreshToken.findUnique({
-        where: { token },
-        include: { user: true },
-      });
 
-      if (!existing || !existing.user) {
-        throw new UnauthorizedException("Refresh token không hợp lệ");
-      }
-
-      if (existing.expiresAt < new Date()) {
-        await tx.refreshToken.delete({ where: { id: existing.id } });
-        throw new UnauthorizedException("Refresh token đã hết hạn");
-      }
-
-      await tx.refreshToken.delete({ where: { id: existing.id } });
-      const newRefreshToken = await this.upsertRefreshToken(
-        existing.user.id,
-        tx,
-      );
-
-      return { user: existing.user, refreshToken: newRefreshToken };
+    const user = await this.prisma.user.findFirst({
+      where: { id: payload.sub, deletedAt: null },
     });
 
-    const roles = await this.getUserRoles(result.user.id);
-    const accessToken = await this.jwtService.signAsync({
-      sub: result.user.id,
-      email: result.user.email,
-      roles,
-    });
+    if (!user) {
+      throw new UnauthorizedException("Refresh token không hợp lệ");
+    }
 
-    return { accessToken, refreshToken: result.refreshToken };
+    return {
+      access_token: await this.jwtService.signAsync({
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+        roles: [user.role],
+        type: "access",
+      }),
+    };
   }
 
-  async logout(userId: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { userId },
-    });
+  logout() {
+    return {};
   }
 }

@@ -2,13 +2,13 @@ docker-dev:
 	docker-compose -f ./docker/compose.dev.yml up -d --build
 
 prisma-studio:
-	pnpm -F=api exec pnpm dlx prisma studio
+	pnpm -F=api exec prisma studio
 
 prisma-dev:
-	pnpm -F=api exec pnpm dlx prisma migrate dev && pnpm -F=api exec pnpm dlx prisma generate
+	pnpm -F=api exec prisma migrate dev && pnpm -F=api exec prisma generate
 
 seed-dev:
-	pnpm -F=api exec pnpm dlx prisma db seed -- --environment development
+	pnpm -F=api exec prisma db seed -- --environment development
 
 be-dev:
 	pnpm -F=api exec pnpm dev

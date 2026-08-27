@@ -6,11 +6,18 @@ export function setupSwagger(app: INestApplication) {
     .setTitle("Open Project API")
     .setDescription("Made with ❤️ by @torikkyun")
     .setVersion("0.0.1")
-    .addCookieAuth("accessToken", {
-      type: "apiKey",
-      in: "cookie",
-      name: "accessToken",
+    .addBearerAuth({
+      name: "Authorization",
+      bearerFormat: "Bearer",
+      scheme: "Bearer",
+      type: "http",
+      in: "Header",
     })
+    // .addCookieAuth("accessToken", {
+    //   type: "apiKey",
+    //   in: "cookie",
+    //   name: "accessToken",
+    // })
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api/swagger", app, document, {

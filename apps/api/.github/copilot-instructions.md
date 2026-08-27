@@ -6,7 +6,7 @@
 - Prisma ORM + PostgreSQL
 - Architecture: Controller → Service → Prisma (không dùng repository pattern)
 - Validation: class-validator + class-transformer trên DTO
-- Auth: JWT Bearer via @nestjs/passport hoặc sử dụng Cookie-based session (tùy module)
+- Auth: JWT Bearer via @nestjs/passport
 
 ## Cấu trúc module
 
@@ -29,10 +29,9 @@ src/modules/[module-name]/
 4. KHÔNG viết comment cho code đơn giản
 5. KHÔNG dùng any — luôn type rõ ràng
 6. KHÔNG tự thêm field/logic ngoài yêu cầu
-7. Mỗi file KHÔNG quá 150 dòng — nếu quá thì tách
-8. Tên biến/hàm tiếng Anh, rõ nghĩa, không viết tắt
-9. Mỗi service method xử lý 1 việc duy nhất
-10. KHÔNG catch error trong service — để NestJS exception filter xử lý
+7. Tên biến/hàm tiếng Anh, rõ nghĩa, không viết tắt
+8. Mỗi service method xử lý 1 việc duy nhất
+9. KHÔNG catch error trong service — để NestJS exception filter xử lý
 
 ## Response format chuẩn
 
@@ -70,9 +69,3 @@ interface PaginationMeta {
 - UpdateDto extends PartialType(CreateDto)
 - Tên file: create-[resource].dto.ts, update-[resource].dto.ts
 - KHÔNG đặt logic trong DTO
-
-## Naming
-
-- Controller method: create, findAll, findOne, update, remove
-- Service method: create, findAll, findById, update, softDelete
-- Route: POST /, GET /, GET /:id, PATCH /:id, DELETE /:id
