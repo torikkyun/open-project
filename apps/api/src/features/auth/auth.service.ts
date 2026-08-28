@@ -6,7 +6,7 @@ import {
 import { PrismaService } from "@/infra/db";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { RefreshDto, RegisterDto } from "./dto";
+import { LoginDto, RefreshDto, RegisterDto } from "./dto";
 import { hashPassword, verifyPassword } from "@/common/utils/hash.util";
 import { AuthenticatedUser } from "@/common/types/auth-user.type";
 
@@ -46,7 +46,7 @@ export class AuthService {
     return user;
   }
 
-  async validateUser(
+  private async validateUser(
     email: string,
     password: string,
   ): Promise<AuthenticatedUser> {
@@ -61,7 +61,8 @@ export class AuthService {
     return { id: user.id, email: user.email, name: user.name };
   }
 
-  async login(authenticatedUser: AuthenticatedUser) {
+  async login(dto: LoginDto) {
+    const authenticatedUser = await this.validateUser(dto.email, dto.password);
     const user = await this.prisma.user.findFirst({
       where: { id: authenticatedUser.id, deletedAt: null },
       include: {

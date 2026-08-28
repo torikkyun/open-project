@@ -7,10 +7,16 @@ import { PrismaService } from "@/infra/db";
 import { ProjectStatus, ProjectRole } from "@/generated/prisma/enums";
 import { getOffsetPagination } from "@/common/utils/pagination.util";
 import { AddProjectMemberDto, CreateProjectDto, UpdateProjectDto } from "./dto";
+import { ProjectAccessService } from "./project-access.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly projectAccessService: ProjectAccessService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findAll(
     query: {
@@ -22,6 +28,7 @@ export class ProjectsService {
       start_date_from?: string | Date;
       start_date_to?: string | Date;
     } = {},
+    actingUser?: { sub: string; roles: string[] },
   ) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -29,6 +36,20 @@ export class ProjectsService {
 
     const where = {
       deletedAt: null,
+      ...(actingUser &&
+      !actingUser.roles.some((role) =>
+        ["admin", "project_manager"].includes(role.toLowerCase()),
+      )
+        ? {
+            members: {
+              some: {
+                userId: actingUser.sub,
+                canView: true,
+                deletedAt: null,
+              },
+            },
+          }
+        : {}),
       ...(query.search
         ? {
             name: {
@@ -182,7 +203,15 @@ export class ProjectsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actingUser?: { sub: string; roles: string[] }) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        id,
+        "view",
+      );
+    }
+
     const project = await this.prisma.project.findFirst({
       where: { id, deletedAt: null },
       select: {
@@ -233,7 +262,19 @@ export class ProjectsService {
     };
   }
 
-  async update(id: string, updateProjectDto: UpdateProjectDto) {
+  async update(
+    id: string,
+    updateProjectDto: UpdateProjectDto,
+    actingUser?: { sub: string; roles: string[] },
+  ) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        id,
+        "manage",
+      );
+    }
+
     const existingProject = await this.prisma.project.findFirst({
       where: { id, deletedAt: null },
       select: { id: true, startDate: true, endDate: true },
@@ -302,7 +343,15 @@ export class ProjectsService {
   /*
    * Khi soft delete project (deletedAt), các bảng con như tasks, milestones, attachments vẫn giữ nguyên. Nếu sau này truy vấn task mà không lọc theo deletedAt của project, có thể lấy task thuộc project đã xóa. Nên cân nhắc soft delete cascade hoặc luôn lọc deletedAt khi join. Không phải lỗi critical nếu đã có lọc trong query.
    */
-  async remove(id: string) {
+  async remove(id: string, actingUser?: { sub: string; roles: string[] }) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        id,
+        "manage",
+      );
+    }
+
     const project = await this.prisma.project.findFirst({
       where: { id, deletedAt: null },
       select: { id: true },
@@ -320,7 +369,15 @@ export class ProjectsService {
     return { id: project.id };
   }
 
-  async archive(id: string) {
+  async archive(id: string, actingUser?: { sub: string; roles: string[] }) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        id,
+        "manage",
+      );
+    }
+
     const project = await this.prisma.project.findFirst({
       where: { id, deletedAt: null },
       select: { id: true },
@@ -343,7 +400,19 @@ export class ProjectsService {
     };
   }
 
-  async addMember(projectId: string, addProjectMemberDto: AddProjectMemberDto) {
+  async addMember(
+    projectId: string,
+    addProjectMemberDto: AddProjectMemberDto,
+    actingUser?: { sub: string; roles: string[] },
+  ) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        projectId,
+        "manage",
+      );
+    }
+
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, deletedAt: null },
       select: { id: true },
@@ -375,7 +444,7 @@ export class ProjectsService {
       throw new BadRequestException("Người dùng đã có trong dự án");
     }
 
-    return this.prisma.projectMember.create({
+    const member = await this.prisma.projectMember.create({
       data: {
         projectId,
         userId: addProjectMemberDto.user_id,
@@ -393,9 +462,28 @@ export class ProjectsService {
         canUpload: true,
       },
     });
+    await this.notificationsService.create(
+      [member.userId],
+      "project_added",
+      `Bạn đã được thêm vào dự án ${projectId}`,
+      actingUser?.sub,
+    );
+    return member;
   }
 
-  async removeMember(projectId: string, userId: string) {
+  async removeMember(
+    projectId: string,
+    userId: string,
+    actingUser?: { sub: string; roles: string[] },
+  ) {
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        projectId,
+        "manage",
+      );
+    }
+
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, deletedAt: null },
       select: { id: true },

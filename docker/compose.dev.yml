@@ -24,21 +24,21 @@ services:
       retries: 5
       start_period: 10s
 
-  redis:
-    image: redis:8-alpine
-    container_name: open-project-cache-dev
-    restart: always
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
-    volumes:
-      - cache-dev-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+  # redis:
+  #   image: redis:8-alpine
+  #   container_name: open-project-cache-dev
+  #   restart: always
+  #   ports:
+  #     - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+  #   volumes:
+  #     - cache-dev-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
 
 volumes:
   database-dev-data:
-  cache-dev-data:
+  # cache-dev-data:

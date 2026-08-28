@@ -1,19 +1,10 @@
-import {
-  Body,
-  Controller,
-  Post,
-  Request,
-  UseGuards,
-  Version,
-} from "@nestjs/common";
+import { Body, Controller, Post } from "@nestjs/common";
 import { Public } from "@/common/decorators/public.decorator";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshDto } from "./dto/refresh.dto";
 import { RegisterDto } from "./dto/register.dto";
-import { LocalGuard } from "./guards/local.guard";
-import { AuthenticatedUser } from "@/common/types/auth-user.type";
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 @ApiTags("Auth")
 @Controller({ path: "auth", version: "1" })
@@ -32,12 +23,10 @@ export class AuthController {
 
   @Post("login")
   @Public()
-  @UseGuards(LocalGuard)
-  @ApiBody({ type: LoginDto })
   @ApiOperation({ summary: "Đăng nhập vào hệ thống" })
-  async login(@Request() request: { user: AuthenticatedUser }) {
+  async login(@Body() dto: LoginDto) {
     return {
-      data: await this.authService.login(request.user),
+      data: await this.authService.login(dto),
       message: "Đăng nhập thành công",
     };
   }

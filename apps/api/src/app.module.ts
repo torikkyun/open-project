@@ -6,6 +6,8 @@ import { configs } from "./configs";
 import { AuthModule } from "./features/auth/auth.module";
 import { ProjectsModule } from "./features/projects";
 import { UsersDepartmentsModule } from "./features/users-departments/users-departments.module";
+import { TasksModule } from "./features/tasks/tasks.module";
+import { NotificationsModule } from "./features/notifications/notifications.module";
 import { APP_GUARD } from "@nestjs/core";
 import { RolesGuard } from "./features/auth/guards/roles.guard";
 import { JwtGuard } from "./features/auth/guards/jwt.guard";
@@ -24,6 +26,8 @@ import { JwtGuard } from "./features/auth/guards/jwt.guard";
     AuthModule,
     ProjectsModule,
     UsersDepartmentsModule,
+    TasksModule,
+    NotificationsModule,
   ],
   providers: [
     {

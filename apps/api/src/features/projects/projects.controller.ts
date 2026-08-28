@@ -29,8 +29,11 @@ export class ProjectsController {
 
   @Get()
   @ApiOperation({ summary: "Lấy danh sách dự án" })
-  async findAll(@Query() query: ProjectQueryDto) {
-    const result = await this.projectsService.findAll(query);
+  async findAll(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: ProjectQueryDto,
+  ) {
+    const result = await this.projectsService.findAll(query, user);
     return { data: result.data, meta: result.meta };
   }
 
@@ -52,19 +55,23 @@ export class ProjectsController {
   */
   @Get(":id")
   @ApiOperation({ summary: "Lấy thông tin chi tiết dự án" })
-  async findOne(@Param("id", ParseUUIDPipe) id: string) {
-    return { data: await this.projectsService.findOne(id) };
+  async findOne(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return { data: await this.projectsService.findOne(id, user) };
   }
 
   @Put(":id")
   @Roles("admin", "project_manager")
   @ApiOperation({ summary: "Cập nhật thông tin dự án" })
   async update(
+    @CurrentUser() user: JwtPayload,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() updateProjectDto: UpdateProjectDto,
   ) {
     return {
-      data: await this.projectsService.update(id, updateProjectDto),
+      data: await this.projectsService.update(id, updateProjectDto, user),
       message: "Cập nhật dự án thành công",
     };
   }
@@ -72,17 +79,23 @@ export class ProjectsController {
   @Delete(":id")
   @Roles("admin", "project_manager")
   @ApiOperation({ summary: "Xóa dự án" })
-  async remove(@Param("id", ParseUUIDPipe) id: string) {
-    await this.projectsService.remove(id);
+  async remove(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    await this.projectsService.remove(id, user);
     return { message: "Xóa dự án thành công" };
   }
 
   @Post(":id/archive")
   @Roles("admin", "project_manager")
   @ApiOperation({ summary: "Lưu trữ dự án" })
-  async archive(@Param("id", ParseUUIDPipe) id: string) {
+  async archive(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
     return {
-      data: await this.projectsService.archive(id),
+      data: await this.projectsService.archive(id, user),
       message: "Lưu trữ dự án thành công",
     };
   }
@@ -91,11 +104,12 @@ export class ProjectsController {
   @Roles("admin", "project_manager")
   @ApiOperation({ summary: "Thêm thành viên vào dự án" })
   async addMember(
+    @CurrentUser() user: JwtPayload,
     @Param("id", ParseUUIDPipe) id: string,
     @Body() addProjectMemberDto: AddProjectMemberDto,
   ) {
     return {
-      data: await this.projectsService.addMember(id, addProjectMemberDto),
+      data: await this.projectsService.addMember(id, addProjectMemberDto, user),
       message: "Thêm thành viên thành công",
     };
   }
@@ -104,10 +118,11 @@ export class ProjectsController {
   @Roles("admin", "project_manager")
   @ApiOperation({ summary: "Xóa thành viên khỏi dự án" })
   async removeMember(
+    @CurrentUser() user: JwtPayload,
     @Param("id", ParseUUIDPipe) id: string,
     @Param("user_id", ParseUUIDPipe) userId: string,
   ) {
-    await this.projectsService.removeMember(id, userId);
+    await this.projectsService.removeMember(id, userId, user);
     return { message: "Xóa thành viên thành công" };
   }
 }
