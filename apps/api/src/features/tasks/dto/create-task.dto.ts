@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Min,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { Priority } from "@/generated/prisma/enums";
@@ -36,6 +37,7 @@ export class CreateTaskDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   @ApiPropertyOptional({ example: 5.5 })
   estimated_hours?: number;
 

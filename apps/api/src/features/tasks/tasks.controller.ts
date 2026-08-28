@@ -152,6 +152,15 @@ export class TasksController {
     return { message: "Xóa công việc thành công" };
   }
 
+  @Get("tasks/:id/history")
+  @ApiOperation({ summary: "Lấy lịch sử thay đổi công việc" })
+  async getHistory(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", ParseUUIDPipe) id: string,
+  ) {
+    return { data: await this.tasksService.getHistory(id, user) };
+  }
+
   @Get("tasks/:task_id/dependencies")
   @ApiOperation({ summary: "Lấy danh sách phụ thuộc của công việc" })
   async findDependencies(@Param("task_id", ParseUUIDPipe) taskId: string) {
@@ -184,6 +193,4 @@ export class TasksController {
     await this.taskDependenciesService.remove(taskId, dependencyId);
     return { message: "Xóa phụ thuộc công việc thành công" };
   }
-
-  // TODO: GET /api/v1/tasks/:id/history
 }

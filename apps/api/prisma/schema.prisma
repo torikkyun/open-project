@@ -89,6 +89,7 @@ model User {
     attachments      Attachment[]
     notifications    Notification[]
     createdTemplates Template[]      @relation("TemplateCreator")
+    taskHistories    TaskHistory[]
 
     @@index([departmentId])
     @@index([role])
@@ -191,6 +192,7 @@ model Task {
     comments                Comment[]
     attachments             Attachment[]
     customFields            TaskCustomField[]
+    histories               TaskHistory[]
 
     @@index([projectId])
     @@index([parentTaskId])
@@ -412,4 +414,20 @@ model TaskCustomField {
     @@index([customFieldId])
     @@index([deletedAt])
     @@map("task_custom_fields")
+}
+
+model TaskHistory {
+    id        String   @id @default(uuid()) @db.Uuid
+    taskId    String   @map("task_id") @db.Uuid
+    actorId   String?  @map("actor_id") @db.Uuid
+    action    String   @db.VarChar(100)
+    changes   Json?
+    createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+    task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+    @@index([taskId, createdAt])
+    @@index([actorId])
+    @@map("task_history")
 }

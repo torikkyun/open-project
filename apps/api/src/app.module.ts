@@ -11,6 +11,7 @@ import { NotificationsModule } from "./features/notifications/notifications.modu
 import { APP_GUARD } from "@nestjs/core";
 import { RolesGuard } from "./features/auth/guards/roles.guard";
 import { JwtGuard } from "./features/auth/guards/jwt.guard";
+import { ReportsModule } from "./features/reports/reports.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { JwtGuard } from "./features/auth/guards/jwt.guard";
     UsersDepartmentsModule,
     TasksModule,
     NotificationsModule,
+    ReportsModule,
   ],
   providers: [
     {

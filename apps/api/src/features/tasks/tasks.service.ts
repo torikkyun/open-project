@@ -18,6 +18,65 @@ export class TasksService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  private async assertParentIsValid(
+    taskId: string,
+    parentTaskId: string,
+    projectId: string,
+  ) {
+    if (taskId === parentTaskId) {
+      throw new BadRequestException(
+        "parent_task_id không được là chính task hiện tại",
+      );
+    }
+
+    let currentParentId: string | null = parentTaskId;
+    const visited = new Set<string>([taskId]);
+    while (currentParentId) {
+      if (visited.has(currentParentId)) {
+        throw new BadRequestException(
+          "Không thể tạo vòng lặp trong phân cấp task",
+        );
+      }
+      visited.add(currentParentId);
+
+      const parentTask = await this.prisma.task.findFirst({
+        where: { id: currentParentId, projectId, deletedAt: null },
+        select: { id: true, parentTaskId: true },
+      });
+      if (!parentTask) {
+        throw new NotFoundException("Không tìm thấy công việc cha");
+      }
+      currentParentId = parentTask.parentTaskId;
+    }
+  }
+
+  private async updateAncestorProgress(
+    tx: Parameters<Parameters<PrismaService["$transaction"]>[0]>[0],
+    parentTaskId: string | null,
+  ) {
+    let currentParentId = parentTaskId;
+    while (currentParentId) {
+      const children = await tx.task.findMany({
+        where: { parentTaskId: currentParentId, deletedAt: null },
+        select: { progressPercent: true },
+      });
+      const progressPercent = children.length
+        ? Math.round(
+            children.reduce(
+              (total, child) => total + child.progressPercent,
+              0,
+            ) / children.length,
+          )
+        : 0;
+      const parent = await tx.task.update({
+        where: { id: currentParentId },
+        data: { progressPercent },
+        select: { id: true, parentTaskId: true },
+      });
+      currentParentId = parent.parentTaskId;
+    }
+  }
+
   async findAll(
     projectId: string,
     query: QueryTaskDto,
@@ -188,6 +247,14 @@ export class TasksService {
       );
     }
 
+    if (createTaskDto.parent_task_id) {
+      await this.assertParentIsValid(
+        "",
+        createTaskDto.parent_task_id,
+        projectId,
+      );
+    }
+
     const assigneeIds = [...new Set(createTaskDto.assignee_ids ?? [])];
 
     if (assigneeIds.length) {
@@ -253,6 +320,15 @@ export class TasksService {
           })),
         });
       }
+
+      await tx.taskHistory.create({
+        data: {
+          taskId: task.id,
+          actorId: actingUser?.sub,
+          action: "created",
+          changes: { title: task.title, parent_task_id: task.parentTaskId },
+        },
+      });
 
       const result = {
         id: task.id,
@@ -361,6 +437,11 @@ export class TasksService {
       select: {
         id: true,
         projectId: true,
+        title: true,
+        status: true,
+        progressPercent: true,
+        estimatedHours: true,
+        actualHours: true,
         startDate: true,
         endDate: true,
         parentTaskId: true,
@@ -392,9 +473,46 @@ export class TasksService {
         ? new Date(updateTaskDto.end_date)
         : task.endDate;
 
+    const project = await this.prisma.project.findFirst({
+      where: { id: task.projectId, deletedAt: null },
+      select: { startDate: true, endDate: true },
+    });
+    if (!project) {
+      throw new NotFoundException("Không tìm thấy dự án");
+    }
+
     if (nextStartDate && nextEndDate && nextEndDate < nextStartDate) {
       throw new BadRequestException(
         "end_date phải lớn hơn hoặc bằng start_date",
+      );
+    }
+
+    if (
+      (nextStartDate && nextStartDate < project.startDate) ||
+      (nextEndDate && nextEndDate > project.endDate)
+    ) {
+      throw new BadRequestException(
+        "task date phải nằm trong khoảng thời gian của dự án",
+      );
+    }
+
+    const nextEstimatedHours =
+      updateTaskDto.estimated_hours !== undefined
+        ? updateTaskDto.estimated_hours
+        : task.estimatedHours;
+    const nextActualHours =
+      updateTaskDto.actual_hours !== undefined
+        ? updateTaskDto.actual_hours
+        : task.actualHours;
+    if (
+      nextEstimatedHours !== null &&
+      nextEstimatedHours !== undefined &&
+      nextActualHours !== null &&
+      nextActualHours !== undefined &&
+      nextActualHours > nextEstimatedHours
+    ) {
+      throw new BadRequestException(
+        "actual_hours không được lớn hơn estimated_hours",
       );
     }
 
@@ -403,25 +521,8 @@ export class TasksService {
         ? updateTaskDto.parent_task_id
         : task.parentTaskId;
 
-    if (parentTaskId && parentTaskId === id) {
-      throw new BadRequestException(
-        "parent_task_id không được là chính task hiện tại",
-      );
-    }
-
     if (parentTaskId) {
-      const parentTask = await this.prisma.task.findFirst({
-        where: {
-          id: parentTaskId,
-          projectId: task.projectId,
-          deletedAt: null,
-        },
-        select: { id: true },
-      });
-
-      if (!parentTask) {
-        throw new NotFoundException("Không tìm thấy công việc cha");
-      }
+      await this.assertParentIsValid(id, parentTaskId, task.projectId);
     }
 
     const assigneeIds = updateTaskDto.assignee_ids
@@ -515,6 +616,38 @@ export class TasksService {
         }
       }
 
+      const changes = Object.fromEntries(
+        Object.entries({
+          title: updateTaskDto.title,
+          estimated_hours: updateTaskDto.estimated_hours,
+          actual_hours: updateTaskDto.actual_hours,
+          start_date: updateTaskDto.start_date,
+          end_date: updateTaskDto.end_date,
+          progress_percent: updateTaskDto.progress_percent,
+          parent_task_id: updateTaskDto.parent_task_id,
+          assignee_ids: assigneeIds,
+        }).filter(([, value]) => value !== undefined),
+      );
+      if (Object.keys(changes).length) {
+        await tx.taskHistory.create({
+          data: {
+            taskId: id,
+            actorId: actingUser?.sub,
+            action: "updated",
+            changes,
+          },
+        });
+      }
+      if (
+        updateTaskDto.progress_percent !== undefined ||
+        parentTaskId !== task.parentTaskId
+      ) {
+        await this.updateAncestorProgress(tx, parentTaskId);
+        if (parentTaskId !== task.parentTaskId) {
+          await this.updateAncestorProgress(tx, task.parentTaskId);
+        }
+      }
+
       const result = {
         id: updatedTask.id,
         title: updatedTask.title,
@@ -579,8 +712,8 @@ export class TasksService {
     const currentStatus = task.status;
     const validTransitions: Record<TaskStatus, TaskStatus[]> = {
       todo: [TaskStatus.in_progress, TaskStatus.canceled],
-      in_progress: [TaskStatus.review, TaskStatus.done, TaskStatus.canceled],
-      review: [TaskStatus.in_progress, TaskStatus.done, TaskStatus.canceled],
+      in_progress: [TaskStatus.review, TaskStatus.canceled],
+      review: [TaskStatus.in_progress, TaskStatus.canceled],
       done: [TaskStatus.in_progress, TaskStatus.canceled],
       canceled: [TaskStatus.in_progress],
     };
@@ -589,10 +722,21 @@ export class TasksService {
       throw new BadRequestException("invalid status transition");
     }
 
-    const updatedTask = await this.prisma.task.update({
-      where: { id },
-      data: { status },
-      select: { id: true, status: true, updatedAt: true },
+    const updatedTask = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: { status },
+        select: { id: true, status: true, updatedAt: true },
+      });
+      await tx.taskHistory.create({
+        data: {
+          taskId: id,
+          actorId: actingUser?.sub,
+          action: "status_changed",
+          changes: { from: currentStatus, to: status },
+        },
+      });
+      return updated;
     });
 
     const result = {
@@ -641,13 +785,24 @@ export class TasksService {
       throw new BadRequestException("task not in review status");
     }
 
-    const updatedTask = await this.prisma.task.update({
-      where: { id },
-      data: {
-        status: TaskStatus.done,
-        ...(comment !== undefined ? { description: comment } : {}),
-      },
-      select: { id: true, status: true, updatedAt: true },
+    const updatedTask = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: {
+          status: TaskStatus.done,
+          ...(comment !== undefined ? { description: comment } : {}),
+        },
+        select: { id: true, status: true, updatedAt: true },
+      });
+      await tx.taskHistory.create({
+        data: {
+          taskId: id,
+          actorId: actingUser?.sub,
+          action: "review_approved",
+          changes: { comment: comment ?? null, status: TaskStatus.done },
+        },
+      });
+      return updated;
     });
 
     const result = {
@@ -694,13 +849,24 @@ export class TasksService {
       throw new BadRequestException("task not in review status");
     }
 
-    const updatedTask = await this.prisma.task.update({
-      where: { id },
-      data: {
-        status: TaskStatus.in_progress,
-        ...(comment ? { description: comment } : {}),
-      },
-      select: { id: true, status: true, updatedAt: true },
+    const updatedTask = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: {
+          status: TaskStatus.in_progress,
+          ...(comment ? { description: comment } : {}),
+        },
+        select: { id: true, status: true, updatedAt: true },
+      });
+      await tx.taskHistory.create({
+        data: {
+          taskId: id,
+          actorId: actingUser?.sub,
+          action: "review_rejected",
+          changes: { comment, status: TaskStatus.in_progress },
+        },
+      });
+      return updated;
     });
 
     const result = {
@@ -741,5 +907,33 @@ export class TasksService {
     });
 
     return { id: task.id };
+  }
+
+  async getHistory(id: string, actingUser?: { sub: string; roles: string[] }) {
+    const task = await this.prisma.task.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, projectId: true },
+    });
+    if (!task) {
+      throw new NotFoundException("Không tìm thấy công việc");
+    }
+    if (actingUser) {
+      await this.projectAccessService.assertProjectAccess(
+        actingUser,
+        task.projectId,
+        "view",
+      );
+    }
+    return this.prisma.taskHistory.findMany({
+      where: { taskId: id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        action: true,
+        changes: true,
+        createdAt: true,
+        actor: { select: { id: true, name: true } },
+      },
+    });
   }
 }

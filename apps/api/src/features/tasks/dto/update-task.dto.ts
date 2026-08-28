@@ -8,6 +8,7 @@ export class UpdateTaskDto extends PartialType(CreateTaskDto) {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
   @ApiPropertyOptional({ example: 3.0 })
   actual_hours?: number;
 
