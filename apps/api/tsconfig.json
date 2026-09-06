@@ -1,7 +1,16 @@
 {
-  "extends": "@repo/typescript-config/nest-js",
+  "extends": "@repo/typescript-config/base",
   "compilerOptions": {
     "outDir": "./dist",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "types": ["node", "jest"],
+    "sourceMap": true,
+    "removeComments": true,
+    "incremental": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false,
     "paths": {
       "@/*": ["./src/*"],
       "@/prisma/*": ["./src/generated/prisma/*"]

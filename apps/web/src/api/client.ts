@@ -62,9 +62,10 @@ export type ApiClient = {
   ) => Promise<T>;
 };
 
-const DEFAULT_API_BASE_URL = "http://localhost:3000/api";
+const DEFAULT_API_BASE_URL = "http://localhost:3100";
 const ACCESS_TOKEN_STORAGE_KEY = "access_token";
 const REFRESH_TOKEN_STORAGE_KEY = "refresh_token";
+const USER_ROLE_STORAGE_KEY = "user_role";
 
 let refreshRequest: Promise<boolean> | null = null;
 
@@ -100,17 +101,26 @@ export function getApiBaseUrl() {
   ).replace(/\/+$/, "");
 }
 
-export function setSessionTokens(accessToken: string, refreshToken?: string) {
+export function setSessionTokens(
+  accessToken: string,
+  refreshToken?: string,
+  userRole?: string,
+) {
   safeStorageSet(ACCESS_TOKEN_STORAGE_KEY, accessToken);
 
   if (refreshToken) {
     safeStorageSet(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+  }
+
+  if (userRole) {
+    safeStorageSet(USER_ROLE_STORAGE_KEY, userRole);
   }
 }
 
 export function clearSessionTokens() {
   safeStorageRemove(ACCESS_TOKEN_STORAGE_KEY);
   safeStorageRemove(REFRESH_TOKEN_STORAGE_KEY);
+  safeStorageRemove(USER_ROLE_STORAGE_KEY);
 }
 
 export function getAccessToken() {
@@ -119,6 +129,10 @@ export function getAccessToken() {
 
 export function getRefreshToken() {
   return safeStorageGet(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export function getSessionUserRole() {
+  return safeStorageGet(USER_ROLE_STORAGE_KEY);
 }
 
 function ensureAbsoluteUrl(path: string) {

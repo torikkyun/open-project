@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AllStories } from "../components/ui/stories";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { getAccessToken } from "../api/client";
 
 export const Route = createFileRoute("/")({
-  component: AllStories,
+  beforeLoad: () => {
+    throw redirect({ to: getAccessToken() ? "/dashboard" : "/login" });
+  },
 });

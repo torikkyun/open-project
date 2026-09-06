@@ -1,6 +1,5 @@
 import { api } from "../client";
 import type {
-  ApiSingleResponse,
   AuthLoginPayload,
   AuthLoginResponse,
   AuthRefreshResponse,
@@ -18,12 +17,12 @@ export const authQueryKeys = {
 
 export const authEndpoints = {
   register: (payload: AuthRegisterPayload) =>
-    api.post<ApiSingleResponse<User>>("/v1/auth/register", payload),
+    api.post<User>("/v1/auth/register", payload),
   login: (payload: AuthLoginPayload) =>
-    api.post<ApiSingleResponse<AuthLoginResponse>>("/v1/auth/login", payload),
-  logout: () => api.post<ApiSingleResponse<null>>("/v1/auth/logout", null),
+    api.post<AuthLoginResponse>("/v1/auth/login", payload),
+  logout: () => api.post<null>("/v1/auth/logout", null),
   refresh: (refreshToken: string) =>
-    api.post<ApiSingleResponse<AuthRefreshResponse>>("/v1/auth/refresh", {
+    api.post<AuthRefreshResponse>("/v1/auth/refresh", {
       refresh_token: refreshToken,
     }),
 };
