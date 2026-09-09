@@ -130,8 +130,15 @@ export type Template = {
   id: string;
   name: string;
   description?: string | null;
-  tasks?: Task[];
+  tasks?: TemplateTask[];
   created_at?: string;
+};
+
+export type TemplateTask = {
+  id?: string;
+  title: string;
+  start_offset_days?: number;
+  duration_days?: number;
 };
 
 export type DashboardSummary = {

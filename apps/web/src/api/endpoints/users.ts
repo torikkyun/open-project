@@ -1,5 +1,5 @@
 import { api } from "../client";
-import type { ApiSingleResponse, PaginationParams, User } from "../contracts";
+import type { PaginationParams, User } from "../contracts";
 
 export const userQueryKeys = {
   list: ["users", "list"],
@@ -16,7 +16,9 @@ export const usersEndpoints = {
       email: string;
       role: User["role"];
     },
-  ) => api.post<ApiSingleResponse<User>>("/v1/users", payload),
+  ) => api.post<User>("/v1/users", payload),
+  update: (id: string, payload: Partial<User>) =>
+    api.put<User>(`/v1/users/${id}`, payload),
   remove: (id: string) => api.delete<unknown>(`/v1/users/${id}`),
 };
 

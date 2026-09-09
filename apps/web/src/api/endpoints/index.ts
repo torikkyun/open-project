@@ -6,5 +6,6 @@ export * from "./comments";
 export * from "./documents";
 export * from "./notifications";
 export * from "./users";
+export * from "./departments";
 export * from "./templates";
 export * from "./reports";

@@ -136,7 +136,13 @@ export class ProjectsService {
       if (createProjectDto.template_id) {
         const template = await tx.template.findUnique({
           where: { id: createProjectDto.template_id },
-          select: { id: true },
+          select: {
+            id: true,
+            tasks: {
+              where: { deletedAt: null },
+              orderBy: { createdAt: "asc" },
+            },
+          },
         });
 
         if (!template) {
@@ -198,6 +204,41 @@ export class ProjectsService {
             role: ProjectRole.member,
           })),
         });
+      }
+
+      if (createProjectDto.template_id) {
+        const template = await tx.template.findUnique({
+          where: { id: createProjectDto.template_id },
+          select: {
+            tasks: {
+              where: { deletedAt: null },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        });
+        const taskIds = new Map<string, string>();
+        for (const templateTask of template?.tasks ?? []) {
+          const taskStart = new Date(startDate);
+          taskStart.setDate(taskStart.getDate() + templateTask.startOffsetDays);
+          const taskEnd = new Date(taskStart);
+          taskEnd.setDate(taskEnd.getDate() + templateTask.durationDays - 1);
+          const task = await tx.task.create({
+            data: {
+              projectId: project.id,
+              parentTaskId: templateTask.parentTemplateTaskId
+                ? (taskIds.get(templateTask.parentTemplateTaskId) ?? null)
+                : null,
+              title: templateTask.title,
+              description: templateTask.description,
+              estimatedHours: templateTask.estimatedHours,
+              startDate: taskStart,
+              endDate: taskEnd,
+              priority: templateTask.priority,
+              isMilestone: templateTask.isMilestone,
+            },
+          });
+          taskIds.set(templateTask.id, task.id);
+        }
       }
       return project;
     });

@@ -5,6 +5,12 @@ import type {
   Template,
 } from "../contracts";
 
+export type TemplateInput = {
+  name: string;
+  description?: string;
+  tasks?: { title: string }[];
+};
+
 export const templateQueryKeys = {
   list: ["templates", "list"],
   detail: (id: string) => ["templates", id],
@@ -15,10 +21,10 @@ export const templatesEndpoints = {
     api.get<Template[]>("/v1/templates", { params }),
   getById: (id: string) =>
     api.get<ApiSingleResponse<Template>>(`/v1/templates/${id}`),
-  create: (payload: Partial<Template> & { name: string }) =>
-    api.post<ApiSingleResponse<Template>>("/v1/templates", payload),
-  update: (id: string, payload: Partial<Template>) =>
-    api.put<ApiSingleResponse<Template>>(`/v1/templates/${id}`, payload),
+  create: (payload: TemplateInput) =>
+    api.post<Template>("/v1/templates", payload),
+  update: (id: string, payload: Partial<TemplateInput>) =>
+    api.put<Template>(`/v1/templates/${id}`, payload),
   remove: (id: string) => api.delete<unknown>(`/v1/templates/${id}`),
 };
 
