@@ -99,6 +99,16 @@ export class CollaborationController {
     };
   }
 
+  @Get("tasks/:task_id/attachments")
+  async listTaskAttachments(
+    @CurrentUser() user: JwtPayload,
+    @Param("task_id", ParseUUIDPipe) taskId: string,
+  ) {
+    return {
+      data: await this.collaborationService.listTaskAttachments(taskId, user),
+    };
+  }
+
   @Post("comments/:comment_id/attachments")
   @UseInterceptors(CollaborationController.fileInterceptor())
   async uploadCommentAttachment(

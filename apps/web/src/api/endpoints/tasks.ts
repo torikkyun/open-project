@@ -4,6 +4,7 @@ import type {
   ApiSingleResponse,
   PaginationParams,
   Task,
+  TaskHistory,
 } from "../contracts";
 
 export const taskQueryKeys = {
@@ -32,8 +33,7 @@ export const tasksEndpoints = {
   updateStatus: (id: string, status: string) =>
     api.patch<Task>(`/v1/tasks/${id}/status`, { status }),
   remove: (id: string) => api.delete<unknown>(`/v1/tasks/${id}`),
-  getHistory: (id: string) =>
-    api.get<ApiSingleResponse<Task[]>>(`/v1/tasks/${id}/history`),
+  getHistory: (id: string) => api.get<TaskHistory[]>(`/v1/tasks/${id}/history`),
   listDependencies: (taskId: string) =>
     api.get<ApiListResponse<Task>>(`/v1/tasks/${taskId}/dependencies`),
   createDependency: (

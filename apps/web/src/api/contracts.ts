@@ -75,9 +75,18 @@ export type Task = {
   assignee_ids?: string[];
   parent_task_id?: string | null;
   is_milestone?: boolean;
+  dependencies?: { id: string }[];
   custom_fields?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
+};
+
+export type TaskHistory = {
+  id: string;
+  action: string;
+  changes: unknown;
+  createdAt: string;
+  actor?: { id: string; name: string } | null;
 };
 
 export type Comment = {
@@ -89,6 +98,8 @@ export type Comment = {
   created_at?: string;
   updated_at?: string;
   parent_comment_id?: string | null;
+  user?: { id: string; name: string };
+  attachments?: Attachment[];
 };
 
 export type Attachment = {
@@ -101,16 +112,17 @@ export type Attachment = {
   project_id?: string | null;
   comment_id?: string | null;
   created_at?: string;
+  file_name?: string;
+  file_size?: number;
 };
 
 export type Notification = {
   id: string;
   user_id: string;
   type: string;
-  title: string;
-  message: string;
+  content: string;
   is_read: boolean;
-  metadata?: Record<string, unknown>;
+  read_at?: string | null;
   created_at?: string;
 };
 
@@ -140,6 +152,7 @@ export type DashboardSummary = {
 
 export type ApiListResponse<T> = ApiEnvelope<T[]> & {
   meta?: ApiMeta;
+  unread_count?: number;
 };
 
 export type ApiSingleResponse<T> = ApiEnvelope<T>;

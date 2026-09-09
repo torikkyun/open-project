@@ -1,8 +1,9 @@
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { projectsEndpoints } from "../../api/endpoints/projects";
 import { tasksEndpoints } from "../../api/endpoints/tasks";
 import { usersEndpoints } from "../../api/endpoints/users";
+import { getSessionUserRole } from "../../api/client";
 import type { Project, ProjectMember, Task, User } from "../../api/contracts";
 import { Button, Dialog, Input } from "../../components/ui";
 
@@ -21,6 +22,23 @@ function dateLabel(value?: string) {
         new Date(value),
       )
     : "-";
+}
+
+type GanttZoom = "day" | "week" | "month";
+
+function dayValue(value: string) {
+  return new Date(`${value.slice(0, 10)}T00:00:00`).getTime();
+}
+
+function dateValue(value: number) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function dayCount(start: string, end: string) {
+  return Math.max(
+    1,
+    Math.round((dayValue(end) - dayValue(start)) / 86400000) + 1,
+  );
 }
 
 function TaskDialog({
@@ -434,6 +452,396 @@ function TaskList({
   );
 }
 
+function TaskKanban({
+  tasks,
+  onEdit,
+  onUpdate,
+}: {
+  tasks: Task[];
+  onEdit: (task: Task) => void;
+  onUpdate: (id: string, payload: Partial<Task>) => Promise<void>;
+}) {
+  const role = getSessionUserRole();
+  const canDrag = role === "admin" || role === "project_manager";
+  const canChangeStatus = role !== "guest";
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [dropStatus, setDropStatus] = useState<Task["status"] | null>(null);
+
+  async function moveTask(task: Task, status: Task["status"]) {
+    if (task.status === status || pendingId) return;
+    setPendingId(task.id);
+    try {
+      await onUpdate(task.id, { status });
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function drop(status: Task["status"]) {
+    const task = tasks.find((item) => item.id === draggedId);
+    setDraggedId(null);
+    setDropStatus(null);
+    if (task) await moveTask(task, status);
+  }
+
+  return (
+    <section aria-labelledby="kanban-title" className="space-y-md">
+      <div>
+        <h2 className="text-subhead" id="kanban-title">
+          Kanban
+        </h2>
+        <p className="mt-xxs text-body-sm text-ink-muted">
+          Move tasks through workflow. Status changes remain permission-checked
+          by the API.
+        </p>
+      </div>
+      <div className="grid gap-md overflow-x-auto pb-sm md:grid-cols-5">
+        {statuses.map((status) => {
+          const columnTasks = tasks.filter((task) => task.status === status);
+          return (
+            <div
+              className={`min-w-[16rem] border border-hairline bg-surface-1 p-sm ${dropStatus === status ? "border-primary" : ""}`}
+              key={status}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                if (canDrag) setDropStatus(status);
+              }}
+              onDragOver={(event) => {
+                if (canDrag) event.preventDefault();
+              }}
+              onDragLeave={() => setDropStatus(null)}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (canDrag) void drop(status);
+              }}
+            >
+              <div className="flex items-center justify-between gap-sm border-b border-hairline pb-sm">
+                <h3 className="text-body-emphasis">{statusNames[status]}</h3>
+                <span className="text-caption text-ink-muted">
+                  {columnTasks.length}
+                </span>
+              </div>
+              <div className="mt-sm space-y-sm">
+                {columnTasks.map((task) => (
+                  <article
+                    className={`border border-hairline-strong bg-canvas p-sm ${draggedId === task.id ? "opacity-50" : ""}`}
+                    draggable={canDrag && pendingId !== task.id}
+                    key={task.id}
+                    onDragStart={() => canDrag && setDraggedId(task.id)}
+                    onDragEnd={() => {
+                      setDraggedId(null);
+                      setDropStatus(null);
+                    }}
+                  >
+                    <button
+                      className="w-full text-left text-body-emphasis text-primary hover:underline"
+                      onClick={() => onEdit(task)}
+                    >
+                      {task.title}
+                    </button>
+                    <p className="mt-xs text-caption text-ink-muted">
+                      {task.assignees
+                        ?.map((assignee) => assignee.name)
+                        .join(", ") || "Unassigned"}
+                    </p>
+                    <div className="mt-sm flex items-center justify-between gap-xs text-caption text-ink-muted">
+                      <span>{task.progress_percent ?? 0}%</span>
+                      <span>{task.estimated_hours ?? 0}h</span>
+                    </div>
+                    {canChangeStatus ? (
+                      <label className="mt-sm block text-caption text-ink-muted">
+                        Change status
+                        <select
+                          aria-label={`${task.title} status`}
+                          className="mt-xxs min-h-10 w-full border-b border-hairline-strong bg-canvas px-xs"
+                          disabled={pendingId === task.id}
+                          value={task.status}
+                          onChange={(event) =>
+                            void moveTask(
+                              task,
+                              event.target.value as Task["status"],
+                            )
+                          }
+                        >
+                          {statuses.map((value) => (
+                            <option key={value} value={value}>
+                              {statusNames[value]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                  </article>
+                ))}
+                {!columnTasks.length ? (
+                  <p className="border border-dashed border-hairline p-sm text-caption text-ink-muted">
+                    No tasks
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TaskGantt({
+  project,
+  tasks,
+  onEdit,
+  onUpdate,
+}: {
+  project: Project;
+  tasks: Task[];
+  onEdit: (task: Task) => void;
+  onUpdate: (id: string, payload: Partial<Task>) => Promise<void>;
+}) {
+  const role = getSessionUserRole();
+  const canEditDates = role === "admin" || role === "project_manager";
+  const [zoom, setZoom] = useState<GanttZoom>("week");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const projectStart = project.start_date.slice(0, 10);
+  const projectEnd = project.end_date.slice(0, 10);
+  const totalDays = dayCount(projectStart, projectEnd);
+  const unitDays = zoom === "day" ? 1 : zoom === "week" ? 7 : 30;
+  const units = Math.ceil(totalDays / unitDays);
+  const filtered = tasks.filter(
+    (task) =>
+      (!search || task.title.toLowerCase().includes(search.toLowerCase())) &&
+      (!status || task.status === status),
+  );
+  const rowIndex = new Map(filtered.map((task, index) => [task.id, index]));
+
+  function taskPosition(task: Task) {
+    const start = Math.max(0, dayCount(projectStart, task.start_date) - 1);
+    const duration = Math.min(
+      totalDays - start,
+      dayCount(task.start_date, task.end_date),
+    );
+    return {
+      left: `${(start / totalDays) * 100}%`,
+      width: task.is_milestone
+        ? "1.25rem"
+        : `${Math.max((duration / totalDays) * 100, 1.25)}%`,
+    };
+  }
+
+  function labels() {
+    return Array.from({ length: units }, (_, index) => {
+      const date = dayValue(projectStart) + index * unitDays * 86400000;
+      return new Intl.DateTimeFormat("en", {
+        month: "short",
+        day: zoom === "month" ? undefined : "numeric",
+      }).format(new Date(date));
+    });
+  }
+
+  async function drop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const task = filtered.find((item) => item.id === draggedId);
+    setDraggedId(null);
+    if (!task || !canEditDates || !timelineRef.current) return;
+    const bounds = timelineRef.current.getBoundingClientRect();
+    const chartLeft = bounds.left + 224;
+    const chartWidth = bounds.width - 224;
+    const ratio = Math.max(
+      0,
+      Math.min(1, (event.clientX - chartLeft) / chartWidth),
+    );
+    const duration = dayCount(task.start_date, task.end_date);
+    const maxStart = Math.max(0, totalDays - duration);
+    const nextStart = Math.min(maxStart, Math.round(ratio * totalDays));
+    const start = dayValue(projectStart) + nextStart * 86400000;
+    setPendingId(task.id);
+    try {
+      await onUpdate(task.id, {
+        start_date: dateValue(start),
+        end_date: dateValue(start + (duration - 1) * 86400000),
+      });
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  return (
+    <section aria-labelledby="gantt-title" className="space-y-md">
+      <div className="flex flex-col gap-md md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-subhead" id="gantt-title">
+            Gantt
+          </h2>
+          <p className="mt-xxs text-body-sm text-ink-muted">
+            Schedule, progress, milestones, and dependencies.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-sm">
+          <label className="text-body-sm" htmlFor="gantt-search">
+            Search
+            <Input
+              id="gantt-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <label className="text-body-sm" htmlFor="gantt-status">
+            Status
+            <select
+              id="gantt-status"
+              className="mt-xs min-h-12 border-b border-hairline-strong bg-surface-1 px-sm"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="">All statuses</option>
+              {statuses.map((value) => (
+                <option key={value} value={value}>
+                  {statusNames[value]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="flex items-end gap-xxs" aria-label="Gantt zoom">
+            {(["day", "week", "month"] as const).map((value) => (
+              <button
+                className={`min-h-12 border px-sm text-body-sm ${zoom === value ? "border-primary text-primary" : "border-hairline-strong"}`}
+                key={value}
+                onClick={() => setZoom(value)}
+                type="button"
+              >
+                {value}
+              </button>
+            ))}
+          </fieldset>
+        </div>
+      </div>
+      <div className="overflow-x-auto border border-hairline">
+        <div
+          className="relative min-w-[52rem]"
+          ref={timelineRef}
+          onDragOver={(event) => canEditDates && event.preventDefault()}
+          onDrop={(event) => void drop(event)}
+        >
+          <div
+            className="grid border-b border-hairline bg-surface-1 text-caption text-ink-muted"
+            style={{ gridTemplateColumns: "14rem 1fr" }}
+          >
+            <div className="border-r border-hairline p-sm">Task</div>
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${units}, minmax(4rem, 1fr))`,
+              }}
+            >
+              {labels().map((label, index) => (
+                <div
+                  className="border-r border-hairline p-sm"
+                  key={`${label}-${index}`}
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+          {filtered.map((task) => {
+            const position = taskPosition(task);
+            return (
+              <div
+                className="grid min-h-16 border-b border-hairline"
+                key={task.id}
+                style={{ gridTemplateColumns: "14rem 1fr" }}
+              >
+                <button
+                  className="border-r border-hairline p-sm text-left text-body-sm text-primary hover:underline"
+                  onClick={() => onEdit(task)}
+                >
+                  {task.title}
+                  <span className="block text-caption text-ink-muted">
+                    {task.progress_percent ?? 0}%
+                  </span>
+                </button>
+                <div className="relative bg-canvas">
+                  <div
+                    className="absolute inset-0 grid"
+                    style={{
+                      gridTemplateColumns: `repeat(${units}, minmax(4rem, 1fr))`,
+                    }}
+                  >
+                    {labels().map((_, index) => (
+                      <span className="border-r border-hairline" key={index} />
+                    ))}
+                  </div>
+                  <div
+                    aria-label={`${task.title}, ${dateLabel(task.start_date)} to ${dateLabel(task.end_date)}`}
+                    className={`absolute top-1/2 h-8 -translate-y-1/2 border border-primary bg-blue-60 ${task.is_milestone ? "rotate-45" : ""} ${pendingId === task.id ? "opacity-50" : ""}`}
+                    draggable={canEditDates && pendingId !== task.id}
+                    onDragStart={() => canEditDates && setDraggedId(task.id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    style={position}
+                    title={`${task.title}: ${task.progress_percent ?? 0}%`}
+                  >
+                    {!task.is_milestone ? (
+                      <span
+                        className="block h-full bg-success"
+                        style={{ width: `${task.progress_percent ?? 0}%` }}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.flatMap((task) =>
+            (task.dependencies ?? []).flatMap((dependency) => {
+              const source = filtered.find((item) => item.id === dependency.id);
+              if (!source) return [];
+              const sourceRow = rowIndex.get(source.id);
+              const targetRow = rowIndex.get(task.id);
+              if (sourceRow === undefined || targetRow === undefined) return [];
+              const sourcePosition = taskPosition(source);
+              const targetPosition = taskPosition(task);
+              return (
+                <svg
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-[14rem] right-0 top-12 h-[calc(100%-3rem)] w-[calc(100%-14rem)]"
+                  key={`${dependency.id}-${task.id}`}
+                  preserveAspectRatio="none"
+                  viewBox={`0 0 100 ${filtered.length * 64}`}
+                >
+                  <line
+                    stroke="currentColor"
+                    strokeDasharray="2 2"
+                    strokeWidth="0.5"
+                    x1={`${parseFloat(sourcePosition.left) + parseFloat(sourcePosition.width)}`}
+                    x2={parseFloat(targetPosition.left)}
+                    y1={sourceRow * 64 + 32}
+                    y2={targetRow * 64 + 32}
+                  />
+                </svg>
+              );
+            }),
+          )}
+          {!filtered.length ? (
+            <p className="p-lg text-body-sm text-ink-muted">
+              No tasks match filters.
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {!canEditDates ? (
+        <p className="text-caption text-ink-muted">
+          View only. Date editing requires Admin or Project Manager access.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams({
     from: "/_authenticated/projects/$projectId",
@@ -441,7 +849,9 @@ export function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [tab, setTab] = useState<"tasks" | "members">("tasks");
+  const [tab, setTab] = useState<"tasks" | "kanban" | "gantt" | "members">(
+    "tasks",
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memberId, setMemberId] = useState("");
@@ -483,6 +893,10 @@ export function ProjectDetailPage() {
   }, [projectId]);
 
   async function updateTask(id: string, payload: Partial<Task>) {
+    const previous = tasks.find((task) => task.id === id);
+    setTasks((current) =>
+      current.map((task) => (task.id === id ? { ...task, ...payload } : task)),
+    );
     try {
       const result = await tasksEndpoints.update(id, payload);
       setTasks((current) =>
@@ -492,6 +906,12 @@ export function ProjectDetailPage() {
       setError(
         cause instanceof Error ? cause.message : "Unable to update task",
       );
+      if (previous) {
+        setTasks((current) =>
+          current.map((task) => (task.id === id ? previous : task)),
+        );
+      }
+      throw cause;
     }
   }
 
@@ -576,6 +996,22 @@ export function ProjectDetailPage() {
           Tasks
         </button>
         <button
+          className={`border-b-2 px-md py-sm text-body-sm ${tab === "kanban" ? "border-primary text-primary" : "border-transparent text-ink-muted"}`}
+          role="tab"
+          aria-selected={tab === "kanban"}
+          onClick={() => setTab("kanban")}
+        >
+          Kanban
+        </button>
+        <button
+          className={`border-b-2 px-md py-sm text-body-sm ${tab === "gantt" ? "border-primary text-primary" : "border-transparent text-ink-muted"}`}
+          role="tab"
+          aria-selected={tab === "gantt"}
+          onClick={() => setTab("gantt")}
+        >
+          Gantt
+        </button>
+        <button
           className={`border-b-2 px-md py-sm text-body-sm ${tab === "members" ? "border-primary text-primary" : "border-transparent text-ink-muted"}`}
           role="tab"
           aria-selected={tab === "members"}
@@ -589,6 +1025,19 @@ export function ProjectDetailPage() {
           tasks={tasks}
           users={users}
           onCreate={() => setTaskDialog({ open: true, task: null })}
+          onEdit={(task) => setTaskDialog({ open: true, task })}
+          onUpdate={updateTask}
+        />
+      ) : tab === "kanban" ? (
+        <TaskKanban
+          tasks={tasks}
+          onEdit={(task) => setTaskDialog({ open: true, task })}
+          onUpdate={updateTask}
+        />
+      ) : tab === "gantt" ? (
+        <TaskGantt
+          project={project}
+          tasks={tasks}
           onEdit={(task) => setTaskDialog({ open: true, task })}
           onUpdate={updateTask}
         />

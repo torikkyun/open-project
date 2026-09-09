@@ -251,9 +251,9 @@ export function DashboardPage() {
                 <ul className="mt-md divide-y divide-hairline">
                   {notifications.map((notification) => (
                     <li className="py-sm" key={notification.id}>
-                      <p className="text-body-emphasis">{notification.title}</p>
+                      <p className="text-body-emphasis">{notification.type}</p>
                       <p className="mt-xxs text-body-sm text-ink-muted">
-                        {notification.message}
+                        {notification.content}
                       </p>
                     </li>
                   ))}

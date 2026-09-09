@@ -1,9 +1,5 @@
 import { api } from "../client";
-import type {
-  ApiListResponse,
-  ApiSingleResponse,
-  Attachment,
-} from "../contracts";
+import type { ApiSingleResponse, Attachment } from "../contracts";
 
 export const documentQueryKeys = {
   project: (projectId: string) => ["documents", projectId],
@@ -28,13 +24,14 @@ export const documentsEndpoints = {
       formData,
     ),
   download: (id: string) =>
-    api.get<Blob>(`/v1/attachments/${id}/download`, { skipAuth: false }),
+    api.get<Blob>(`/v1/attachments/${id}/download`, {
+      skipAuth: false,
+      responseType: "blob",
+    }),
   listProject: (projectId: string) =>
-    api.get<ApiListResponse<Attachment>>(
-      `/v1/projects/${projectId}/attachments`,
-    ),
+    api.get<Attachment[]>(`/v1/projects/${projectId}/attachments`),
   listTask: (taskId: string) =>
-    api.get<ApiListResponse<Attachment>>(`/v1/tasks/${taskId}/attachments`),
+    api.get<Attachment[]>(`/v1/tasks/${taskId}/attachments`),
 };
 
 export type DocumentEndpointGroup = typeof documentsEndpoints;

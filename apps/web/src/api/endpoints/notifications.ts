@@ -14,14 +14,11 @@ export const notificationsEndpoints = {
   list: (params: PaginationParams = {}) =>
     api.get<Notification[]>("/v1/notifications", { params }),
   unreadCount: () =>
-    api.get<ApiSingleResponse<number>>("/v1/notifications/unread-count"),
+    api.get<{ unread_count: number }>("/v1/notifications/unread-count"),
   markAllRead: () =>
     api.patch<ApiSingleResponse<unknown>>("/v1/notifications/read-all", {}),
   markRead: (id: string) =>
-    api.patch<ApiSingleResponse<Notification>>(
-      `/v1/notifications/${id}/read`,
-      {},
-    ),
+    api.patch<Notification>(`/v1/notifications/${id}/read`, {}),
 };
 
 export type NotificationEndpointGroup = typeof notificationsEndpoints;

@@ -35,6 +35,7 @@ export type RequestOptions<TBody = unknown> = Omit<RequestInit, "body"> & {
   params?: RequestParams;
   skipAuth?: boolean;
   allowRetry?: boolean;
+  responseType?: "json" | "blob";
 };
 
 export type ApiClient = {
@@ -309,9 +310,12 @@ async function rawRequest(
 
   const response = await fetch(url, requestInit);
   const contentType = response.headers.get("content-type") ?? "";
-  const payload = contentType.includes("application/json")
-    ? await response.json().catch(() => undefined)
-    : await response.text().catch(() => undefined);
+  const payload =
+    options.responseType === "blob"
+      ? await response.blob()
+      : contentType.includes("application/json")
+        ? await response.json().catch(() => undefined)
+        : await response.text().catch(() => undefined);
 
   return {
     status: response.status,

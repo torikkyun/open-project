@@ -296,6 +296,40 @@ export class CollaborationService {
     };
   }
 
+  async listTaskAttachments(
+    taskId: string,
+    user: { sub: string; roles: string[] },
+  ) {
+    const task = await this.prisma.task.findFirst({
+      where: { id: taskId, deletedAt: null },
+      select: { projectId: true },
+    });
+    if (!task) throw new NotFoundException("Không tìm thấy công việc");
+    await this.projectAccessService.assertProjectAccess(
+      user,
+      task.projectId,
+      "view",
+    );
+    const attachments = await this.prisma.attachment.findMany({
+      where: { taskId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        fileName: true,
+        fileSize: true,
+        mimeType: true,
+        createdAt: true,
+      },
+    });
+    return attachments.map((attachment) => ({
+      id: attachment.id,
+      file_name: attachment.fileName,
+      file_size: Number(attachment.fileSize),
+      mime_type: attachment.mimeType,
+      created_at: attachment.createdAt,
+    }));
+  }
+
   private extension(fileName: string) {
     const extension = fileName.slice(fileName.lastIndexOf("."));
     return /^[.][a-z0-9]{1,10}$/i.test(extension)
