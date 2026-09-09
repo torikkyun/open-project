@@ -12,9 +12,7 @@ export const reportQueryKeys = {
 
 export const reportsEndpoints = {
   dashboard: (params: PaginationParams = {}) =>
-    api.get<ApiSingleResponse<DashboardSummary>>("/v1/reports/dashboard", {
-      params,
-    }),
+    api.get<DashboardSummary>("/v1/reports/dashboard", { params }),
   tasks: (params: PaginationParams = {}) =>
     api.get<ApiSingleResponse<DashboardSummary>>("/v1/reports/tasks", {
       params,

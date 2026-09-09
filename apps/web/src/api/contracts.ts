@@ -9,6 +9,12 @@ export type ProjectPermission = {
   can_upload: boolean;
 };
 
+export type ProjectMember = {
+  id: string;
+  name: string;
+  role: string;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -36,6 +42,10 @@ export type Project = {
   status?: string;
   manager_id?: string | null;
   template_id?: string | null;
+  created_by?: { id: string; name: string };
+  members_count?: number;
+  tasks_count?: number;
+  members?: ProjectMember[];
   created_at?: string;
   updated_at?: string;
 };
@@ -54,9 +64,12 @@ export type Task = {
   title: string;
   description?: string | null;
   status: TaskStatus;
-  priority?: TaskPriority;
   estimated_hours?: number | null;
   actual_hours?: number | null;
+  progress_percent?: number;
+  priority?: TaskPriority;
+  assignees?: { id: string; name: string }[];
+  subtasks_count?: number;
   start_date: string;
   end_date: string;
   assignee_ids?: string[];
@@ -110,13 +123,19 @@ export type Template = {
 };
 
 export type DashboardSummary = {
-  total_projects?: number;
-  total_tasks?: number;
-  completed_tasks?: number;
-  overdue_tasks?: number;
-  active_members?: number;
-  progress?: number;
-  [key: string]: unknown;
+  projects: { total: number; by_status: Record<string, number> };
+  tasks: {
+    total: number;
+    by_status: Record<string, number>;
+    backlog: number;
+    overdue: number;
+    needing_review: number;
+    assigned_to_me: number;
+  };
+  progress_percent: number;
+  hours: { estimated: number; actual: number };
+  sla: { overdue_tasks: number };
+  generated_at: string;
 };
 
 export type ApiListResponse<T> = ApiEnvelope<T[]> & {

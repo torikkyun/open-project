@@ -1,6 +1,5 @@
 import { api } from "../client";
 import type {
-  ApiListResponse,
   ApiSingleResponse,
   PaginationParams,
   Template,
@@ -13,7 +12,7 @@ export const templateQueryKeys = {
 
 export const templatesEndpoints = {
   list: (params: PaginationParams = {}) =>
-    api.get<ApiListResponse<Template>>("/v1/templates", { params }),
+    api.get<Template[]>("/v1/templates", { params }),
   getById: (id: string) =>
     api.get<ApiSingleResponse<Template>>(`/v1/templates/${id}`),
   create: (payload: Partial<Template> & { name: string }) =>

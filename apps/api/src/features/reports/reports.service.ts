@@ -52,6 +52,9 @@ export class ReportsService {
       deletedAt: null,
       ...projectScope,
       ...(query.project_id ? { projectId: query.project_id } : {}),
+      ...(query.scope === "mine"
+        ? { assignees: { some: { userId: user.sub, deletedAt: null } } }
+        : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(from || to
         ? {
@@ -81,6 +84,16 @@ export class ReportsService {
                   some: { userId: user.sub, canView: true, deletedAt: null },
                 },
               }),
+          ...(query.scope === "mine"
+            ? {
+                tasks: {
+                  some: {
+                    deletedAt: null,
+                    assignees: { some: { userId: user.sub, deletedAt: null } },
+                  },
+                },
+              }
+            : {}),
         };
     const now = new Date();
     const overdueWhere = {

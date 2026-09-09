@@ -15,10 +15,10 @@ export const taskQueryKeys = {
 
 export const tasksEndpoints = {
   list: (projectId: string, params: PaginationParams = {}) =>
-    api.get<ApiListResponse<Task>>(`/v1/projects/${projectId}/tasks`, {
+    api.get<Task[]>(`/v1/projects/${projectId}/tasks`, {
       params,
     }),
-  getById: (id: string) => api.get<ApiSingleResponse<Task>>(`/v1/tasks/${id}`),
+  getById: (id: string) => api.get<Task>(`/v1/tasks/${id}`),
   create: (
     projectId: string,
     payload: Partial<Task> & {
@@ -26,15 +26,11 @@ export const tasksEndpoints = {
       start_date: string;
       end_date: string;
     },
-  ) =>
-    api.post<ApiSingleResponse<Task>>(
-      `/v1/projects/${projectId}/tasks`,
-      payload,
-    ),
+  ) => api.post<Task>(`/v1/projects/${projectId}/tasks`, payload),
   update: (id: string, payload: Partial<Task>) =>
-    api.put<ApiSingleResponse<Task>>(`/v1/tasks/${id}`, payload),
+    api.put<Task>(`/v1/tasks/${id}`, payload),
   updateStatus: (id: string, status: string) =>
-    api.patch<ApiSingleResponse<Task>>(`/v1/tasks/${id}/status`, { status }),
+    api.patch<Task>(`/v1/tasks/${id}/status`, { status }),
   remove: (id: string) => api.delete<unknown>(`/v1/tasks/${id}`),
   getHistory: (id: string) =>
     api.get<ApiSingleResponse<Task[]>>(`/v1/tasks/${id}/history`),

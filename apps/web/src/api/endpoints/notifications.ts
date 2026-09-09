@@ -1,6 +1,5 @@
 import { api } from "../client";
 import type {
-  ApiListResponse,
   ApiSingleResponse,
   Notification,
   PaginationParams,
@@ -13,7 +12,7 @@ export const notificationQueryKeys = {
 
 export const notificationsEndpoints = {
   list: (params: PaginationParams = {}) =>
-    api.get<ApiListResponse<Notification>>("/v1/notifications", { params }),
+    api.get<Notification[]>("/v1/notifications", { params }),
   unreadCount: () =>
     api.get<ApiSingleResponse<number>>("/v1/notifications/unread-count"),
   markAllRead: () =>

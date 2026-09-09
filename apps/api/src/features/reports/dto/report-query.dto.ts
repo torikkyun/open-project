@@ -1,8 +1,19 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsDateString, IsEnum, IsOptional, IsUUID } from "class-validator";
+import {
+  IsDateString,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsUUID,
+} from "class-validator";
 import { TaskStatus } from "@/generated/prisma/enums";
 
 export class ReportQueryDto {
+  @IsOptional()
+  @IsIn(["all", "mine"])
+  @ApiPropertyOptional({ enum: ["all", "mine"] })
+  scope?: "all" | "mine";
+
   @IsOptional()
   @IsUUID()
   @ApiPropertyOptional({ description: "Giới hạn báo cáo trong một dự án" })

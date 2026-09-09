@@ -4,7 +4,7 @@ import { AppShell } from "../../components/shared/app-shell";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: ({ location }) => {
-    if (!getAccessToken()) {
+    if (typeof window !== "undefined" && !getAccessToken()) {
       throw redirect({ to: "/login" });
     }
     return { requestedPath: location.pathname };

@@ -1,10 +1,5 @@
 import { api } from "../client";
-import type {
-  ApiListResponse,
-  ApiSingleResponse,
-  PaginationParams,
-  User,
-} from "../contracts";
+import type { ApiSingleResponse, PaginationParams, User } from "../contracts";
 
 export const userQueryKeys = {
   list: ["users", "list"],
@@ -13,8 +8,8 @@ export const userQueryKeys = {
 
 export const usersEndpoints = {
   list: (params: PaginationParams = {}) =>
-    api.get<ApiListResponse<User>>("/v1/users", { params }),
-  getById: (id: string) => api.get<ApiSingleResponse<User>>(`/v1/users/${id}`),
+    api.get<User[]>("/v1/users", { params }),
+  getById: (id: string) => api.get<User>(`/v1/users/${id}`),
   create: (
     payload: Partial<User> & {
       name: string;
