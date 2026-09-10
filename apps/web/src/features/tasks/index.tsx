@@ -12,8 +12,16 @@ import type {
   TaskHistory,
 } from "../../api/contracts";
 
+const taskStatusLabels: Record<string, string> = {
+  todo: "Cần làm",
+  in_progress: "Đang thực hiện",
+  review: "Chờ duyệt",
+  done: "Hoàn thành",
+  canceled: "Đã hủy",
+};
+
 function dateLabel(value?: string) {
-  return value ? new Date(value).toLocaleString() : "";
+  return value ? new Date(value).toLocaleString("vi-VN") : "";
 }
 
 function downloadBlob(blob: Blob, fileName: string) {
@@ -65,7 +73,7 @@ export function TaskDetailPage() {
       .catch((cause: unknown) => {
         if (active)
           setError(
-            cause instanceof Error ? cause.message : "Unable to load task",
+            cause instanceof Error ? cause.message : "Không thể tải công việc",
           );
       })
       .finally(() => {
@@ -99,7 +107,7 @@ export function TaskDetailPage() {
       setReplyTo(undefined);
     } catch (cause: unknown) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to add comment",
+        cause instanceof Error ? cause.message : "Không thể thêm bình luận",
       );
     }
   }
@@ -112,7 +120,7 @@ export function TaskDetailPage() {
       setAttachments(await documentsEndpoints.listTask(taskId));
     } catch (cause: unknown) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to upload file",
+        cause instanceof Error ? cause.message : "Không thể tải tệp lên",
       );
     }
   }
@@ -124,24 +132,26 @@ export function TaskDetailPage() {
     );
   }
 
-  if (loading) return <p role="status">Loading task...</p>;
-  if (!task) return <p role="alert">{error ?? "Task not found"}</p>;
+  if (loading) return <p role="status">Đang tải công việc...</p>;
+  if (!task) return <p role="alert">{error ?? "Không tìm thấy công việc"}</p>;
 
   return (
     <section aria-labelledby="task-title" className="space-y-xl">
       <header className="border-b border-hairline pb-lg">
         <p className="text-eyebrow uppercase text-primary">
-          Task collaboration
+          Cộng tác công việc
         </p>
         <h1 className="mt-xs text-headline" id="task-title">
           {task.title}
         </h1>
         <p className="mt-xs text-body-sm text-ink-muted">
-          {task.description || "No description"}
+          {task.description || "Chưa có mô tả"}
         </p>
         <div className="mt-md flex flex-wrap gap-md text-body-sm text-ink-muted">
-          <span>Status: {task.status}</span>
-          <span>Progress: {task.progress_percent ?? 0}%</span>
+          <span>
+            Trạng thái: {taskStatusLabels[task.status] ?? task.status}
+          </span>
+          <span>Tiến độ: {task.progress_percent ?? 0}%</span>
           <span>
             {task.start_date} - {task.end_date}
           </span>
@@ -162,14 +172,15 @@ export function TaskDetailPage() {
             aria-labelledby="comments-title"
           >
             <h2 className="text-subhead" id="comments-title">
-              Comments
+              Bình luận
             </h2>
             <ul className="mt-md space-y-md">
               {comments.map((item) => (
                 <li className="border-l-2 border-primary pl-md" key={item.id}>
                   <p className="text-body-sm">{item.content}</p>
                   <p className="mt-xxs text-caption text-ink-muted">
-                    {item.user?.name ?? "User"} · {dateLabel(item.created_at)}
+                    {item.user?.name ?? "Người dùng"} ·{" "}
+                    {dateLabel(item.created_at)}
                   </p>
                   {item.attachments?.map((file) => (
                     <button
@@ -192,14 +203,14 @@ export function TaskDetailPage() {
                     type="button"
                     onClick={() => setReplyTo(item.id)}
                   >
-                    Reply
+                    Trả lời
                   </button>
                 </li>
               ))}
             </ul>
             <form className="mt-lg space-y-sm" onSubmit={submitComment}>
               <label className="text-body-sm" htmlFor="task-comment">
-                {replyTo ? "Reply" : "Add comment"}
+                {replyTo ? "Trả lời" : "Thêm bình luận"}
               </label>
               <textarea
                 className="min-h-24 w-full border border-hairline p-sm"
@@ -212,7 +223,7 @@ export function TaskDetailPage() {
                   className="bg-primary px-md py-xs text-button text-on-primary"
                   type="submit"
                 >
-                  Post comment
+                  Đăng bình luận
                 </button>
                 {replyTo ? (
                   <button
@@ -220,7 +231,7 @@ export function TaskDetailPage() {
                     type="button"
                     onClick={() => setReplyTo(undefined)}
                   >
-                    Cancel reply
+                    Hủy trả lời
                   </button>
                 ) : null}
               </div>
@@ -232,10 +243,10 @@ export function TaskDetailPage() {
           >
             <div className="flex flex-wrap items-center justify-between gap-md">
               <h2 className="text-subhead" id="files-title">
-                Files
+                Tệp
               </h2>
               <label className="bg-primary px-md py-xs text-button text-on-primary">
-                Upload
+                Tải lên
                 <input
                   className="sr-only"
                   type="file"
@@ -264,13 +275,13 @@ export function TaskDetailPage() {
                         )
                     }
                   >
-                    Download
+                    Tải xuống
                   </button>
                 </li>
               ))}
             </ul>
             {!attachments.length ? (
-              <p className="mt-md text-body-sm text-ink-muted">No files.</p>
+              <p className="mt-md text-body-sm text-ink-muted">Chưa có tệp.</p>
             ) : null}
           </section>
         </div>
@@ -280,7 +291,7 @@ export function TaskDetailPage() {
             aria-labelledby="history-title"
           >
             <h2 className="text-subhead" id="history-title">
-              History
+              Lịch sử
             </h2>
             <ul className="mt-md space-y-sm">
               {history.map((entry) => (
@@ -290,7 +301,7 @@ export function TaskDetailPage() {
                 >
                   <strong>{entry.action}</strong>
                   <span className="ml-xs text-ink-muted">
-                    {entry.actor?.name ?? "System"}
+                    {entry.actor?.name ?? "Hệ thống"}
                   </span>
                   <p className="text-caption text-ink-muted">
                     {dateLabel(entry.createdAt)}
@@ -305,14 +316,14 @@ export function TaskDetailPage() {
           >
             <div className="flex items-center justify-between gap-sm">
               <h2 className="text-subhead" id="notifications-title">
-                Notifications
+                Thông báo
               </h2>
               <button
                 className="text-body-sm text-primary underline"
                 type="button"
                 onClick={() => void markAllRead()}
               >
-                Mark all read
+                Đánh dấu tất cả đã đọc
               </button>
             </div>
             <ul className="mt-md divide-y divide-hairline">
@@ -345,7 +356,7 @@ export function TaskDetailPage() {
             </ul>
             {!notifications.length ? (
               <p className="mt-md text-body-sm text-ink-muted">
-                No notifications.
+                Chưa có thông báo.
               </p>
             ) : null}
           </section>

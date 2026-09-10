@@ -24,7 +24,7 @@ export function LoginPage() {
       );
       await navigate({ to: "/dashboard" });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to sign in");
+      setError(cause instanceof Error ? cause.message : "Không thể đăng nhập");
     } finally {
       setPending(false);
     }
@@ -38,7 +38,7 @@ export function LoginPage() {
       >
         <div>
           <p className="text-eyebrow uppercase text-primary">Open Project</p>
-          <h1 className="mt-xs text-headline">Sign in</h1>
+          <h1 className="mt-xs text-headline">Đăng nhập</h1>
         </div>
         <label className="block space-y-xxs text-body-sm">
           Email
@@ -51,7 +51,7 @@ export function LoginPage() {
           />
         </label>
         <label className="block space-y-xxs text-body-sm">
-          Password
+          Mật khẩu
           <input
             className="mt-xxs block w-full border border-hairline-strong p-sm"
             onChange={(event) => setPassword(event.target.value)}
@@ -70,7 +70,7 @@ export function LoginPage() {
           disabled={pending}
           type="submit"
         >
-          {pending ? "Signing in..." : "Sign in"}
+          {pending ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
       </form>
     </main>

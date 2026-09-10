@@ -19,6 +19,12 @@ const dotClasses: Record<Priority, string> = {
   Low: "border border-ink-subtle bg-transparent",
 };
 
+const priorityLabels: Record<Priority, string> = {
+  High: "Cao",
+  Medium: "Trung bình",
+  Low: "Thấp",
+};
+
 export function PriorityDot({
   priority,
   className,
@@ -37,7 +43,7 @@ export function PriorityDot({
         aria-hidden="true"
         className={cn("size-2 shrink-0 rounded-full", dotClasses[priority])}
       />
-      {priority}
+      {priorityLabels[priority]}
     </span>
   );
 }

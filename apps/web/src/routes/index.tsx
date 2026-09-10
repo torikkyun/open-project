@@ -6,7 +6,6 @@ export const Route = createFileRoute("/")({
     if (typeof window === "undefined") {
       return;
     }
-
     throw redirect({ to: getAccessToken() ? "/dashboard" : "/login" });
   },
 });

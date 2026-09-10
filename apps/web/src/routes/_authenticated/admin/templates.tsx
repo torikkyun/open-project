@@ -6,8 +6,9 @@ export const Route = createFileRoute("/_authenticated/admin/templates")({
   beforeLoad: requireAdmin,
   component: () => (
     <AdminPage
-      title="Templates"
-      description="Manage reusable project task structures."
+      kind="templates"
+      title="Mẫu"
+      description="Quản lý các cấu trúc công việc dự án có thể tái sử dụng."
     />
   ),
 });

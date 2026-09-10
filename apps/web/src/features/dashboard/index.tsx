@@ -74,7 +74,7 @@ export function DashboardPage() {
       .catch((cause: unknown) => {
         if (active)
           setError(
-            cause instanceof Error ? cause.message : "Unable to load dashboard",
+            cause instanceof Error ? cause.message : "Không thể tải tổng quan",
           );
       })
       .finally(() => {
@@ -111,7 +111,7 @@ export function DashboardPage() {
       URL.revokeObjectURL(url);
     } catch (cause: unknown) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to export report",
+        cause instanceof Error ? cause.message : "Không thể xuất báo cáo",
       );
     } finally {
       setExporting(false);
@@ -122,19 +122,16 @@ export function DashboardPage() {
     <section aria-labelledby="dashboard-title" className="space-y-xl">
       <div className="flex flex-col gap-md border-b border-hairline pb-lg md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-eyebrow uppercase text-primary">
-            Open Project / Overview
-          </p>
           <h1 className="mt-xs text-headline" id="dashboard-title">
-            Dashboard
+            Tổng quan
           </h1>
           <p className="mt-xs text-body-sm text-ink-muted">
-            Project health, workload, and work needing attention.
+            Tình trạng dự án, khối lượng công việc và các việc cần chú ý.
           </p>
         </div>
         <div className="flex flex-wrap gap-xs">
           <label className="sr-only" htmlFor="dashboard-scope">
-            Dashboard scope
+            Phạm vi tổng quan
           </label>
           <select
             id="dashboard-scope"
@@ -142,11 +139,11 @@ export function DashboardPage() {
             value={scope}
             onChange={(event) => setScope(event.target.value as Scope)}
           >
-            <option value="all">All accessible work</option>
-            <option value="mine">Assigned to me</option>
+            <option value="all">Tất cả công việc được phép xem</option>
+            <option value="mine">Được giao cho tôi</option>
           </select>
           <label className="sr-only" htmlFor="dashboard-project">
-            Project filter
+            Lọc theo dự án
           </label>
           <select
             id="dashboard-project"
@@ -154,7 +151,7 @@ export function DashboardPage() {
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
           >
-            <option value="">All projects</option>
+            <option value="">Tất cả dự án</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
@@ -167,14 +164,14 @@ export function DashboardPage() {
             type="button"
             onClick={() => void exportReport()}
           >
-            {exporting ? "Exporting..." : "Export CSV"}
+            {exporting ? "Đang xuất..." : "Xuất CSV"}
           </button>
         </div>
       </div>
 
       {loading ? (
         <p className="text-body-sm text-ink-muted" role="status">
-          Loading dashboard...
+          Đang tải tổng quan...
         </p>
       ) : null}
       {error ? (
@@ -191,22 +188,22 @@ export function DashboardPage() {
             <Metric
               label="Projects"
               value={summary.projects.total}
-              detail="Within access scope"
+              detail="Trong phạm vi được phép xem"
             />
             <Metric
-              label="Tasks"
+              label="Công việc"
               value={summary.tasks.total}
-              detail={`${summary.tasks.backlog} in backlog`}
+              detail={`${summary.tasks.backlog} trong tồn đọng`}
             />
             <Metric
-              label="Progress"
+              label="Tiến độ"
               value={`${Math.round(summary.progress_percent)}%`}
-              detail={`${summary.hours.actual}h actual / ${summary.hours.estimated}h estimated`}
+              detail={`${summary.hours.actual} giờ thực tế / ${summary.hours.estimated} giờ ước tính`}
             />
             <Metric
-              label="SLA risk"
+              label="Rủi ro SLA"
               value={summary.sla.overdue_tasks}
-              detail="Overdue tasks"
+              detail="Công việc quá hạn"
             />
           </div>
           <div className="grid gap-xl lg:grid-cols-[1.4fr_1fr]">
@@ -216,10 +213,10 @@ export function DashboardPage() {
             >
               <div className="flex items-center justify-between gap-md">
                 <h2 className="text-subhead" id="workload-title">
-                  Workload
+                  Khối lượng công việc
                 </h2>
                 <span className="text-body-sm text-ink-muted">
-                  {Math.round(summary.progress_percent)}% complete
+                  {Math.round(summary.progress_percent)}% hoàn thành
                 </span>
               </div>
               <div className="mt-md h-2 bg-surface-2">
@@ -231,10 +228,16 @@ export function DashboardPage() {
                 />
               </div>
               <div className="mt-lg grid grid-cols-2 gap-md sm:grid-cols-4">
-                <Metric label="Assigned" value={summary.tasks.assigned_to_me} />
-                <Metric label="Review" value={summary.tasks.needing_review} />
-                <Metric label="Backlog" value={summary.tasks.backlog} />
-                <Metric label="Overdue" value={summary.tasks.overdue} />
+                <Metric
+                  label="Được giao"
+                  value={summary.tasks.assigned_to_me}
+                />
+                <Metric
+                  label="Chờ duyệt"
+                  value={summary.tasks.needing_review}
+                />
+                <Metric label="Tồn đọng" value={summary.tasks.backlog} />
+                <Metric label="Quá hạn" value={summary.tasks.overdue} />
               </div>
             </section>
             <section
@@ -243,9 +246,11 @@ export function DashboardPage() {
             >
               <div className="flex items-center justify-between gap-md">
                 <h2 className="text-subhead" id="notifications-title">
-                  Notifications
+                  Thông báo
                 </h2>
-                <span className="text-caption text-ink-muted">30s polling</span>
+                <span className="text-caption text-ink-muted">
+                  Cập nhật mỗi 30 giây
+                </span>
               </div>
               {notifications.length ? (
                 <ul className="mt-md divide-y divide-hairline">
@@ -260,7 +265,7 @@ export function DashboardPage() {
                 </ul>
               ) : (
                 <p className="mt-md text-body-sm text-ink-muted">
-                  No recent notifications.
+                  Chưa có thông báo mới.
                 </p>
               )}
             </section>

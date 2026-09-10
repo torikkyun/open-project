@@ -6,8 +6,9 @@ export const Route = createFileRoute("/_authenticated/admin/departments")({
   beforeLoad: requireAdmin,
   component: () => (
     <AdminPage
-      title="Departments"
-      description="Manage departments used for project organization."
+      kind="departments"
+      title="Phòng ban"
+      description="Quản lý các phòng ban dùng để tổ chức dự án."
     />
   ),
 });

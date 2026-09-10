@@ -9,16 +9,23 @@ import { Button, Dialog, Input } from "../../components/ui";
 
 const statuses = ["todo", "in_progress", "review", "done", "canceled"] as const;
 const statusNames: Record<string, string> = {
-  todo: "To do",
-  in_progress: "In progress",
-  review: "Review",
-  done: "Done",
-  canceled: "Canceled",
+  todo: "Cần làm",
+  in_progress: "Đang thực hiện",
+  review: "Chờ duyệt",
+  done: "Hoàn thành",
+  canceled: "Đã hủy",
+};
+
+const roleNames: Record<string, string> = {
+  admin: "Quản trị viên",
+  project_manager: "Quản lý dự án",
+  member: "Thành viên",
+  guest: "Khách",
 };
 
 function dateLabel(value?: string) {
   return value
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+    ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(
         new Date(value),
       )
     : "-";
@@ -108,7 +115,9 @@ function TaskDialog({
         : await tasksEndpoints.create(project.id, payload);
       onSaved(result);
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "Unable to save task");
+      setError(
+        cause instanceof Error ? cause.message : "Không thể lưu công việc",
+      );
     } finally {
       setPending(false);
     }
@@ -123,13 +132,15 @@ function TaskDialog({
         <Dialog.Backdrop />
         <Dialog.Viewport>
           <Dialog.Popup>
-            <Dialog.Title>{task ? "Edit task" : "Create task"}</Dialog.Title>
+            <Dialog.Title>
+              {task ? "Sửa công việc" : "Tạo công việc"}
+            </Dialog.Title>
             <Dialog.Description>
-              Set schedule, hierarchy, priority, and assignee.
+              Thiết lập lịch, cấp bậc, mức độ ưu tiên và người được giao.
             </Dialog.Description>
             <form className="space-y-md" onSubmit={submit}>
               <label className="block text-body-sm" htmlFor="task-title">
-                Title
+                Tiêu đề
                 <Input
                   id="task-title"
                   required
@@ -140,7 +151,7 @@ function TaskDialog({
                 />
               </label>
               <label className="block text-body-sm" htmlFor="task-description">
-                Description
+                Mô tả
                 <textarea
                   id="task-description"
                   className="mt-xs min-h-20 w-full border border-hairline bg-surface-1 p-sm"
@@ -152,7 +163,7 @@ function TaskDialog({
               </label>
               <div className="grid gap-md sm:grid-cols-2">
                 <label className="block text-body-sm" htmlFor="task-start">
-                  Start
+                  Bắt đầu
                   <input
                     id="task-start"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-sm"
@@ -165,7 +176,7 @@ function TaskDialog({
                   />
                 </label>
                 <label className="block text-body-sm" htmlFor="task-end">
-                  End
+                  Kết thúc
                   <input
                     id="task-end"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-sm"
@@ -180,7 +191,7 @@ function TaskDialog({
               </div>
               <div className="grid gap-md sm:grid-cols-2">
                 <label className="block text-body-sm" htmlFor="task-priority">
-                  Priority
+                  Mức độ ưu tiên
                   <select
                     id="task-priority"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-sm"
@@ -189,14 +200,14 @@ function TaskDialog({
                       setForm({ ...form, priority: event.target.value })
                     }
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="low">Thấp</option>
+                    <option value="medium">Trung bình</option>
+                    <option value="high">Cao</option>
+                    <option value="urgent">Khẩn cấp</option>
                   </select>
                 </label>
                 <label className="block text-body-sm" htmlFor="task-hours">
-                  Estimated hours
+                  Số giờ ước tính
                   <Input
                     id="task-hours"
                     min="0"
@@ -211,7 +222,7 @@ function TaskDialog({
               </div>
               <div className="grid gap-md sm:grid-cols-2">
                 <label className="block text-body-sm" htmlFor="task-assignee">
-                  Assignee
+                  Người được giao
                   <select
                     id="task-assignee"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-sm"
@@ -220,7 +231,7 @@ function TaskDialog({
                       setForm({ ...form, assignee_id: event.target.value })
                     }
                   >
-                    <option value="">Unassigned</option>
+                    <option value="">Chưa giao</option>
                     {users.map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.name}
@@ -229,7 +240,7 @@ function TaskDialog({
                   </select>
                 </label>
                 <label className="block text-body-sm" htmlFor="task-parent">
-                  Parent task
+                  Công việc cha
                   <select
                     id="task-parent"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-sm"
@@ -238,7 +249,7 @@ function TaskDialog({
                       setForm({ ...form, parent_task_id: event.target.value })
                     }
                   >
-                    <option value="">Top level</option>
+                    <option value="">Cấp cao nhất</option>
                     {tasks
                       .filter((item) => item.id !== task?.id)
                       .map((item) => (
@@ -259,10 +270,10 @@ function TaskDialog({
               ) : null}
               <div className="flex justify-end gap-xs">
                 <Button type="button" variant="ghost" onClick={onClose}>
-                  Cancel
+                  Hủy
                 </Button>
                 <Button disabled={pending} type="submit">
-                  {pending ? "Saving..." : "Save task"}
+                  {pending ? "Đang lưu..." : "Lưu công việc"}
                 </Button>
               </div>
             </form>
@@ -322,12 +333,12 @@ function TaskList({
             ) : null}
             <p className="mt-xxs text-caption text-ink-muted">
               {task.assignees?.map((assignee) => assignee.name).join(", ") ||
-                "Unassigned"}
+                "Chưa giao"}
             </p>
           </td>
           <td className="p-md">
             <select
-              aria-label={`${task.title} status`}
+              aria-label={`${task.title} - trạng thái`}
               className="border-b border-hairline-strong bg-surface-1 px-xs py-xxs"
               value={task.status}
               onChange={(event) =>
@@ -346,7 +357,7 @@ function TaskList({
           <td className="p-md">
             <label className="flex items-center gap-xs">
               <input
-                aria-label={`${task.title} progress`}
+                aria-label={`${task.title} - tiến độ`}
                 max="100"
                 min="0"
                 type="range"
@@ -376,33 +387,33 @@ function TaskList({
       <div className="flex flex-col gap-md md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-subhead" id="tasks-title">
-            Task list
+            Danh sách công việc
           </h2>
           <p className="mt-xxs text-body-sm text-ink-muted">
-            Hierarchical work breakdown with inline updates.
+            Phân rã công việc theo cấp bậc với cập nhật trực tiếp.
           </p>
         </div>
-        <Button onClick={onCreate}>Create task</Button>
+        <Button onClick={onCreate}>Tạo công việc</Button>
       </div>
       <div className="grid gap-md md:grid-cols-[minmax(14rem,1fr)_12rem_14rem]">
         <label className="text-body-sm" htmlFor="task-search">
-          Search
+          Tìm kiếm
           <Input
             id="task-search"
-            placeholder="Task title"
+            placeholder="Tên công việc"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
         <label className="text-body-sm" htmlFor="task-status">
-          Status
+          Trạng thái
           <select
             id="task-status"
             className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="">All statuses</option>
+            <option value="">Tất cả trạng thái</option>
             {statuses.map((value) => (
               <option key={value} value={value}>
                 {statusNames[value]}
@@ -411,14 +422,14 @@ function TaskList({
           </select>
         </label>
         <label className="text-body-sm" htmlFor="task-assignee-filter">
-          Assignee
+          Người được giao
           <select
             id="task-assignee-filter"
             className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
             value={assigneeId}
             onChange={(event) => setAssigneeId(event.target.value)}
           >
-            <option value="">All assignees</option>
+            <option value="">Tất cả người được giao</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
@@ -430,14 +441,14 @@ function TaskList({
       {tasks.length ? (
         <div className="overflow-x-auto border border-hairline">
           <table className="w-full min-w-[68rem] text-left text-body-sm">
-            <caption className="sr-only">Project task list</caption>
+            <caption className="sr-only">Danh sách công việc dự án</caption>
             <thead className="bg-surface-1 text-caption uppercase text-ink-muted">
               <tr>
-                <th className="p-md">Task</th>
-                <th className="p-md">Status</th>
-                <th className="p-md">Progress</th>
-                <th className="p-md">Schedule</th>
-                <th className="p-md">Hours</th>
+                <th className="p-md">Công việc</th>
+                <th className="p-md">Trạng thái</th>
+                <th className="p-md">Tiến độ</th>
+                <th className="p-md">Lịch</th>
+                <th className="p-md">Số giờ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">{rows()}</tbody>
@@ -445,7 +456,7 @@ function TaskList({
         </div>
       ) : (
         <p className="border border-dashed border-hairline-strong p-xl text-body-sm text-ink-muted">
-          No tasks match filters.
+          Không có công việc phù hợp với bộ lọc.
         </p>
       )}
     </section>
@@ -492,8 +503,8 @@ function TaskKanban({
           Kanban
         </h2>
         <p className="mt-xxs text-body-sm text-ink-muted">
-          Move tasks through workflow. Status changes remain permission-checked
-          by the API.
+          Di chuyển công việc qua quy trình. API vẫn kiểm tra quyền khi thay đổi
+          trạng thái.
         </p>
       </div>
       <div className="grid gap-md overflow-x-auto pb-sm md:grid-cols-5">
@@ -551,9 +562,9 @@ function TaskKanban({
                     </div>
                     {canChangeStatus ? (
                       <label className="mt-sm block text-caption text-ink-muted">
-                        Change status
+                        Đổi trạng thái
                         <select
-                          aria-label={`${task.title} status`}
+                          aria-label={`${task.title} - trạng thái`}
                           className="mt-xxs min-h-10 w-full border-b border-hairline-strong bg-canvas px-xs"
                           disabled={pendingId === task.id}
                           value={task.status}
@@ -576,7 +587,7 @@ function TaskKanban({
                 ))}
                 {!columnTasks.length ? (
                   <p className="border border-dashed border-hairline p-sm text-caption text-ink-muted">
-                    No tasks
+                    Không có công việc
                   </p>
                 ) : null}
               </div>
@@ -636,7 +647,7 @@ function TaskGantt({
   function labels() {
     return Array.from({ length: units }, (_, index) => {
       const date = dayValue(projectStart) + index * unitDays * 86400000;
-      return new Intl.DateTimeFormat("en", {
+      return new Intl.DateTimeFormat("vi-VN", {
         month: "short",
         day: zoom === "month" ? undefined : "numeric",
       }).format(new Date(date));
@@ -678,12 +689,12 @@ function TaskGantt({
             Gantt
           </h2>
           <p className="mt-xxs text-body-sm text-ink-muted">
-            Schedule, progress, milestones, and dependencies.
+            Lịch, tiến độ, mốc quan trọng và quan hệ phụ thuộc.
           </p>
         </div>
         <div className="flex flex-wrap gap-sm">
           <label className="text-body-sm" htmlFor="gantt-search">
-            Search
+            Tìm kiếm
             <Input
               id="gantt-search"
               value={search}
@@ -691,14 +702,14 @@ function TaskGantt({
             />
           </label>
           <label className="text-body-sm" htmlFor="gantt-status">
-            Status
+            Trạng thái
             <select
               id="gantt-status"
               className="mt-xs min-h-12 border-b border-hairline-strong bg-surface-1 px-sm"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
             >
-              <option value="">All statuses</option>
+              <option value="">Tất cả trạng thái</option>
               {statuses.map((value) => (
                 <option key={value} value={value}>
                   {statusNames[value]}
@@ -706,7 +717,10 @@ function TaskGantt({
               ))}
             </select>
           </label>
-          <fieldset className="flex items-end gap-xxs" aria-label="Gantt zoom">
+          <fieldset
+            className="flex items-end gap-xxs"
+            aria-label="Mức thu phóng Gantt"
+          >
             {(["day", "week", "month"] as const).map((value) => (
               <button
                 className={`min-h-12 border px-sm text-body-sm ${zoom === value ? "border-primary text-primary" : "border-hairline-strong"}`}
@@ -731,7 +745,7 @@ function TaskGantt({
             className="grid border-b border-hairline bg-surface-1 text-caption text-ink-muted"
             style={{ gridTemplateColumns: "14rem 1fr" }}
           >
-            <div className="border-r border-hairline p-sm">Task</div>
+            <div className="border-r border-hairline p-sm">Công việc</div>
             <div
               className="grid"
               style={{
@@ -828,14 +842,14 @@ function TaskGantt({
           )}
           {!filtered.length ? (
             <p className="p-lg text-body-sm text-ink-muted">
-              No tasks match filters.
+              Không có công việc phù hợp với bộ lọc.
             </p>
           ) : null}
         </div>
       </div>
       {!canEditDates ? (
         <p className="text-caption text-ink-muted">
-          View only. Date editing requires Admin or Project Manager access.
+          Chỉ xem. Chỉnh sửa ngày cần quyền Quản trị viên hoặc Quản lý dự án.
         </p>
       ) : null}
     </section>
@@ -961,21 +975,21 @@ export function ProjectDetailPage() {
     <section aria-labelledby="project-detail-title" className="space-y-xl">
       <div className="border-b border-hairline pb-lg">
         <p className="text-eyebrow uppercase text-primary">
-          Open Project / Workspace
+          Open Project / Không gian làm việc
         </p>
         <h1 className="mt-xs text-headline" id="project-detail-title">
           {project.name}
         </h1>
         <p className="mt-xs max-w-[48rem] text-body-sm text-ink-muted">
-          {project.description || "No project description."}
+          {project.description || "Chưa có mô tả dự án."}
         </p>
         <div className="mt-md flex flex-wrap gap-lg text-body-sm text-ink-muted">
-          <span>{project.status}</span>
+          <span>{statusNames[project.status] ?? project.status}</span>
           <span>
             {dateLabel(project.start_date)} - {dateLabel(project.end_date)}
           </span>
-          <span>{project.tasks_count ?? tasks.length} tasks</span>
-          <span>{members.length} members</span>
+          <span>{project.tasks_count ?? tasks.length} công việc</span>
+          <span>{members.length} thành viên</span>
         </div>
       </div>
       {error ? (
@@ -993,7 +1007,7 @@ export function ProjectDetailPage() {
           aria-selected={tab === "tasks"}
           onClick={() => setTab("tasks")}
         >
-          Tasks
+          Công việc
         </button>
         <button
           className={`border-b-2 px-md py-sm text-body-sm ${tab === "kanban" ? "border-primary text-primary" : "border-transparent text-ink-muted"}`}
@@ -1017,7 +1031,7 @@ export function ProjectDetailPage() {
           aria-selected={tab === "members"}
           onClick={() => setTab("members")}
         >
-          Members
+          Thành viên
         </button>
       </div>
       {tab === "tasks" ? (
@@ -1045,16 +1059,16 @@ export function ProjectDetailPage() {
         <section aria-labelledby="members-title" className="space-y-md">
           <div className="flex flex-col gap-md md:flex-row md:items-center md:justify-between">
             <h2 className="text-subhead" id="members-title">
-              Project members
+              Thành viên dự án
             </h2>
             <form className="flex gap-xs" onSubmit={addMember}>
               <select
-                aria-label="Member to add"
+                aria-label="Thành viên cần thêm"
                 className="min-h-10 border-b border-hairline-strong bg-surface-1 px-sm text-body-sm"
                 value={memberId}
                 onChange={(event) => setMemberId(event.target.value)}
               >
-                <option value="">Add member...</option>
+                <option value="">Thêm thành viên...</option>
                 {availableUsers.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name}
@@ -1062,7 +1076,7 @@ export function ProjectDetailPage() {
                 ))}
               </select>
               <Button size="sm" disabled={!memberId}>
-                Add
+                Thêm
               </Button>
             </form>
           </div>
@@ -1074,14 +1088,16 @@ export function ProjectDetailPage() {
               >
                 <div>
                   <p className="text-body-emphasis">{member.name}</p>
-                  <p className="text-body-sm text-ink-muted">{member.role}</p>
+                  <p className="text-body-sm text-ink-muted">
+                    {roleNames[member.role] ?? member.role}
+                  </p>
                 </div>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => void removeMember(member)}
                 >
-                  Remove
+                  Xóa
                 </Button>
               </div>
             ))}

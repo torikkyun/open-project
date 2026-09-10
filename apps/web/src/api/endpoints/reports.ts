@@ -20,6 +20,7 @@ export const reportsEndpoints = {
   exportTasksCsv: (params: PaginationParams = {}) =>
     api.get<Blob>("/v1/reports/tasks/export", {
       params,
+      responseType: "blob",
     }),
 };
 

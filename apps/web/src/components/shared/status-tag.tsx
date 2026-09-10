@@ -24,6 +24,16 @@ const statusClasses: Record<StatusTagStatus, string> = {
   Pending: "border-hairline bg-surface-1 text-ink-muted",
 };
 
+const statusLabels: Record<StatusTagStatus, string> = {
+  Active: "Đang hoạt động",
+  Done: "Hoàn thành",
+  Paused: "Tạm dừng",
+  "To Do": "Cần làm",
+  "In Progress": "Đang thực hiện",
+  Review: "Chờ duyệt",
+  Pending: "Đang chờ",
+};
+
 export function StatusTag({ status, className, ...props }: StatusTagProps) {
   return (
     <span
@@ -34,7 +44,7 @@ export function StatusTag({ status, className, ...props }: StatusTagProps) {
       )}
       {...props}
     >
-      {status}
+      {statusLabels[status]}
     </span>
   );
 }

@@ -14,9 +14,9 @@ Open Project là ứng dụng quản lý dự án, gồm giao diện web, API m�
 ```mermaid
 flowchart LR
     User[Người dùng] --> Web[Web app\nReact + TanStack Router]
-    Web -->|HTTP/JSON + cookie credentials| API[NestJS API\n/api/v1]
+    Web -->|HTTP/JSON + cookie credentials| API[NestJS API\n/v1]
     API --> Auth[Auth feature\nPassport + JWT]
-    API --> Features[Project features\nProjects, Tasks, Users/Departments]
+    API --> Features[Project features\nProjects, Tasks, Users/Departments, Reports, Templates]
     API --> Prisma[PrismaService]
     Prisma --> DB[(PostgreSQL)]
     API --> Files[File storage\nUPLOAD_PATH / uploads]
@@ -32,7 +32,7 @@ Web và API là hai tiến trình độc lập trong môi trường phát triể
 - URI versioning với phiên bản mặc định `v1`.
 - CORS có credentials để hỗ trợ cookie.
 - `cookie-parser` và compression.
-- `ValidationPipe` với `transform` và `whitelist` để chuẩn hóa, giới hạn input DTO.
+- `ValidationPipe` với `transform`, `whitelist` và `forbidNonWhitelisted` để chuẩn hóa, giới hạn input DTO và từ chối field không được khai báo.
 - Global exception filter, response transform interceptor và `ClassSerializerInterceptor`.
 - Static assets tại `/uploads`, lấy đường dẫn từ `UPLOAD_PATH` hoặc thư mục `uploads`.
 - Swagger chỉ bật ngoài production.
@@ -43,6 +43,9 @@ Web và API là hai tiến trình độc lập trong môi trường phát triể
 - `projects`: quản lý dự án và thành viên dự án.
 - `tasks`: task, quan hệ cha-con, người phụ trách, dependency và lịch sử liên quan.
 - `users-departments`: người dùng và phòng ban.
+- `notifications`: thông báo người dùng.
+- `reports`: báo cáo.
+- `templates`: mẫu dự án và task.
 - `health`: health check.
 
 Mỗi feature giữ controller, service, DTO và thành phần liên quan trong thư mục riêng. Controller xử lý HTTP và validation; service chứa nghiệp vụ; Prisma là ranh giới truy cập DB. Các guard JWT và roles được đăng ký ở cấp ứng dụng qua `APP_GUARD`, vì vậy endpoint riêng tư cần vượt qua xác thực và phân quyền tương ứng. Endpoint công khai dùng decorator `@Public()`.
@@ -59,15 +62,16 @@ PostgreSQL là nguồn dữ liệu chính. Prisma schema mô hình hóa các th�
 
 - `User`, `Department`, `Project`, `ProjectMember`.
 - `Task`, `TaskAssignee`, `TaskDependency`, `Milestone`.
-- Các thực thể cộng tác như comment, attachment, notification và custom field.
+- `Template`, `TemplateTask`, `TaskHistory`, `CustomField`, `TaskCustomField`.
+- Các thực thể cộng tác như comment, attachment và notification.
 - Enum cho role, trạng thái dự án/task, độ ưu tiên và loại dependency.
 
-Quan hệ chính: một project có nhiều task, milestone và member; task có thể có subtask, assignee, dependency, comment và attachment. Soft delete được thể hiện bằng `deletedAt` ở nhiều bảng. Thay đổi schema phải đi qua Prisma migration trong `apps/api/prisma/migrations`.
+Quan hệ chính: một project có nhiều task, milestone, member và template; task có thể có subtask, assignee, dependency, comment, attachment, custom field và history. Soft delete được thể hiện bằng `deletedAt` ở nhiều bảng. Thay đổi schema phải đi qua Prisma migration trong `apps/api/prisma/migrations`.
 
 ## 6. Luồng request điển hình
 
 1. Người dùng thao tác trên Web route hoặc feature UI.
-2. Web gọi API qua HTTP, gửi cookie credentials khi cần.
+2. Web gọi API qua HTTP `/v1`, gửi cookie credentials khi cần.
 3. NestJS áp dụng versioning, global pipe, JWT guard và roles guard.
 4. Controller chuyển input đã validate cho service của feature.
 5. Service thực hiện nghiệp vụ qua `PrismaService`.

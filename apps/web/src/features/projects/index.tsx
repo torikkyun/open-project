@@ -7,11 +7,11 @@ import { Button, Dialog, Input } from "../../components/ui";
 import { ProjectDetailPage as ProjectDetail } from "./project-detail";
 
 const statuses = [
-  { value: "", label: "All statuses" },
-  { value: "not_started", label: "Not started" },
-  { value: "in_progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
-  { value: "archived", label: "Archived" },
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "not_started", label: "Chưa bắt đầu" },
+  { value: "in_progress", label: "Đang thực hiện" },
+  { value: "completed", label: "Đã hoàn thành" },
+  { value: "archived", label: "Đã lưu trữ" },
 ] as const;
 
 type ProjectForm = {
@@ -34,7 +34,7 @@ const emptyForm: ProjectForm = {
 
 function formatDate(value?: string) {
   return value
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+    ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(
         new Date(value),
       )
     : "-";
@@ -102,9 +102,7 @@ function ProjectFormDialog({
       onSaved(result);
       onClose();
     } catch (cause: unknown) {
-      setError(
-        cause instanceof Error ? cause.message : "Unable to save project",
-      );
+      setError(cause instanceof Error ? cause.message : "Không thể lưu dự án");
     } finally {
       setPending(false);
     }
@@ -119,15 +117,13 @@ function ProjectFormDialog({
         <Dialog.Backdrop />
         <Dialog.Viewport>
           <Dialog.Popup>
-            <Dialog.Title>
-              {project ? "Edit project" : "Create project"}
-            </Dialog.Title>
+            <Dialog.Title>{project ? "Sửa dự án" : "Tạo dự án"}</Dialog.Title>
             <Dialog.Description>
-              Set project dates, template, and initial members.
+              Thiết lập thời gian, mẫu và thành viên ban đầu cho dự án.
             </Dialog.Description>
             <form className="space-y-md" onSubmit={submit}>
               <label className="block text-body-sm" htmlFor="project-name">
-                Name
+                Tên
                 <Input
                   id="project-name"
                   required
@@ -139,7 +135,7 @@ function ProjectFormDialog({
                 className="block text-body-sm"
                 htmlFor="project-description"
               >
-                Description
+                Mô tả
                 <textarea
                   id="project-description"
                   className="mt-xs min-h-24 w-full border border-hairline bg-surface-1 p-sm"
@@ -151,7 +147,7 @@ function ProjectFormDialog({
               </label>
               <div className="grid gap-md sm:grid-cols-2">
                 <label className="block text-body-sm" htmlFor="project-start">
-                  Start date
+                  Ngày bắt đầu
                   <input
                     id="project-start"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
@@ -164,7 +160,7 @@ function ProjectFormDialog({
                   />
                 </label>
                 <label className="block text-body-sm" htmlFor="project-end">
-                  End date
+                  Ngày kết thúc
                   <input
                     id="project-end"
                     className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
@@ -181,7 +177,7 @@ function ProjectFormDialog({
                     className="block text-body-sm"
                     htmlFor="project-template"
                   >
-                    Template
+                    Mẫu
                     <select
                       id="project-template"
                       className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
@@ -190,7 +186,7 @@ function ProjectFormDialog({
                         update("template_id", event.target.value)
                       }
                     >
-                      <option value="">No template</option>
+                      <option value="">Không dùng mẫu</option>
                       {templates.map((template) => (
                         <option key={template.id} value={template.id}>
                           {template.name}
@@ -199,7 +195,7 @@ function ProjectFormDialog({
                     </select>
                   </label>
                   <fieldset>
-                    <legend className="text-body-sm">Initial members</legend>
+                    <legend className="text-body-sm">Thành viên ban đầu</legend>
                     <div className="mt-xs grid max-h-32 gap-xs overflow-auto border border-hairline p-sm">
                       {users.map((user) => (
                         <label
@@ -238,14 +234,14 @@ function ProjectFormDialog({
               ) : null}
               <div className="flex justify-end gap-xs">
                 <Button type="button" variant="ghost" onClick={onClose}>
-                  Cancel
+                  Hủy
                 </Button>
                 <Button disabled={pending} type="submit">
                   {pending
-                    ? "Saving..."
+                    ? "Đang lưu..."
                     : project
-                      ? "Save changes"
-                      : "Create project"}
+                      ? "Lưu thay đổi"
+                      : "Tạo dự án"}
                 </Button>
               </div>
             </form>
@@ -288,7 +284,7 @@ export function ProjectsPage() {
         (cause: unknown) =>
           active &&
           setError(
-            cause instanceof Error ? cause.message : "Unable to load projects",
+            cause instanceof Error ? cause.message : "Không thể tải dự án",
           ),
       )
       .finally(() => active && setLoading(false));
@@ -337,7 +333,7 @@ export function ProjectsPage() {
       );
     } catch (cause: unknown) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to archive project",
+        cause instanceof Error ? cause.message : "Không thể lưu trữ dự án",
       );
     }
   }
@@ -347,17 +343,17 @@ export function ProjectsPage() {
       <div className="flex flex-col gap-md border-b border-hairline pb-lg md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-eyebrow uppercase text-primary">
-            Open Project / Workspaces
+            Open Project / Không gian làm việc
           </p>
           <h1 className="mt-xs text-headline" id="projects-title">
-            Projects
+            Dự án
           </h1>
           <p className="mt-xs text-body-sm text-ink-muted">
-            Search, filter, and manage projects within your access scope.
+            Tìm kiếm, lọc và quản lý các dự án trong phạm vi được phép xem.
           </p>
         </div>
         <Button onClick={() => setDialog({ open: true, project: null })}>
-          Create project
+          Tạo dự án
         </Button>
       </div>
       <div
@@ -365,10 +361,10 @@ export function ProjectsPage() {
         role="search"
       >
         <label className="text-body-sm" htmlFor="project-search">
-          Search
+          Tìm kiếm
           <Input
             id="project-search"
-            placeholder="Project name"
+            placeholder="Tên dự án"
             value={search}
             onChange={(event) => {
               setPage(1);
@@ -377,7 +373,7 @@ export function ProjectsPage() {
           />
         </label>
         <label className="text-body-sm" htmlFor="project-status">
-          Status
+          Trạng thái
           <select
             id="project-status"
             className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
@@ -395,7 +391,7 @@ export function ProjectsPage() {
           </select>
         </label>
         <label className="text-body-sm" htmlFor="project-manager">
-          Manager
+          Người quản lý
           <select
             id="project-manager"
             className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
@@ -405,7 +401,7 @@ export function ProjectsPage() {
               setManagerId(event.target.value);
             }}
           >
-            <option value="">All managers</option>
+            <option value="">Tất cả người quản lý</option>
             {managers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
@@ -424,25 +420,25 @@ export function ProjectsPage() {
       ) : null}
       {loading ? (
         <p className="text-body-sm text-ink-muted" role="status">
-          Loading projects...
+          Đang tải dự án...
         </p>
       ) : null}
       {!loading && !error && !visibleProjects.length ? (
         <p className="border border-dashed border-hairline-strong p-xl text-body-sm text-ink-muted">
-          No projects match filters.
+          Không có dự án phù hợp với bộ lọc.
         </p>
       ) : null}
       {!loading && visibleProjects.length ? (
         <div className="overflow-x-auto border border-hairline">
           <table className="w-full min-w-[52rem] text-left text-body-sm">
-            <caption className="sr-only">Project list</caption>
+            <caption className="sr-only">Danh sách dự án</caption>
             <thead className="bg-surface-1 text-caption uppercase text-ink-muted">
               <tr>
-                <th className="p-md">Project</th>
-                <th className="p-md">Status</th>
-                <th className="p-md">Dates</th>
-                <th className="p-md">Work</th>
-                <th className="p-md text-right">Actions</th>
+                <th className="p-md">Dự án</th>
+                <th className="p-md">Trạng thái</th>
+                <th className="p-md">Thời gian</th>
+                <th className="p-md">Công việc</th>
+                <th className="p-md text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
@@ -456,7 +452,7 @@ export function ProjectsPage() {
                       {project.name}
                     </a>
                     <p className="mt-xxs max-w-sm truncate text-ink-muted">
-                      {project.description || "No description"}
+                      {project.description || "Chưa có mô tả"}
                     </p>
                   </td>
                   <td className="p-md">{statusLabel(project.status)}</td>
@@ -465,8 +461,8 @@ export function ProjectsPage() {
                     {formatDate(project.end_date)}
                   </td>
                   <td className="p-md whitespace-nowrap">
-                    {project.tasks_count ?? 0} tasks /{" "}
-                    {project.members_count ?? 0} members
+                    {project.tasks_count ?? 0} công việc /{" "}
+                    {project.members_count ?? 0} thành viên
                   </td>
                   <td className="p-md">
                     <div className="flex justify-end gap-xs">
@@ -475,14 +471,14 @@ export function ProjectsPage() {
                         variant="ghost"
                         onClick={() => setDialog({ open: true, project })}
                       >
-                        Edit
+                        Sửa
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => void archive(project)}
                       >
-                        Archive
+                        Lưu trữ
                       </Button>
                     </div>
                   </td>
@@ -493,9 +489,7 @@ export function ProjectsPage() {
         </div>
       ) : null}
       <div className="flex items-center justify-between text-body-sm text-ink-muted">
-        <span>
-          {projects.length} project{projects.length === 1 ? "" : "s"}
-        </span>
+        <span>{projects.length} dự án</span>
         <div className="flex items-center gap-xs">
           <Button
             size="sm"
@@ -503,10 +497,10 @@ export function ProjectsPage() {
             disabled={page === 1}
             onClick={() => setPage((value) => value - 1)}
           >
-            Previous
+            Trước
           </Button>
           <span>
-            Page {page} / {pageCount}
+            Trang {page} / {pageCount}
           </span>
           <Button
             size="sm"
@@ -514,7 +508,7 @@ export function ProjectsPage() {
             disabled={page >= pageCount}
             onClick={() => setPage((value) => value + 1)}
           >
-            Next
+            Sau
           </Button>
         </div>
       </div>

@@ -6,6 +6,12 @@ import type { Department, Template, User, UserRole } from "../../api/contracts";
 import { Button, Input, Table } from "../../components/ui";
 
 const roles: UserRole[] = ["admin", "project_manager", "member", "guest"];
+const roleLabels: Record<UserRole, string> = {
+  admin: "Quản trị viên",
+  project_manager: "Quản lý dự án",
+  member: "Thành viên",
+  guest: "Khách",
+};
 type AdminItem = User | Department | Template;
 
 function AdminForm({
@@ -73,7 +79,7 @@ function AdminForm({
         setTaskLines("");
       }
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "Unable to save");
+      setError(cause instanceof Error ? cause.message : "Không thể lưu");
     } finally {
       setPending(false);
     }
@@ -85,7 +91,7 @@ function AdminForm({
       onSubmit={submit}
     >
       <label className="text-body-sm">
-        Name
+        Tên
         <Input
           required
           value={name}
@@ -105,7 +111,7 @@ function AdminForm({
       ) : null}
       {kind === "users" ? (
         <label className="text-body-sm">
-          Role
+          Vai trò
           <select
             className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
             value={role}
@@ -113,7 +119,7 @@ function AdminForm({
           >
             {roles.map((value) => (
               <option key={value} value={value}>
-                {value}
+                {roleLabels[value]}
               </option>
             ))}
           </select>
@@ -121,7 +127,7 @@ function AdminForm({
       ) : null}
       {kind === "templates" ? (
         <label className="text-body-sm md:col-span-2">
-          Description
+          Mô tả
           <textarea
             className="mt-xs min-h-20 w-full border border-hairline bg-surface-1 p-sm"
             value={description}
@@ -131,10 +137,10 @@ function AdminForm({
       ) : null}
       {kind === "templates" ? (
         <label className="text-body-sm md:col-span-2">
-          Task structure
+          Cấu trúc công việc
           <textarea
             className="mt-xs min-h-24 w-full border border-hairline bg-surface-1 p-sm"
-            placeholder="One task title per line"
+            placeholder="Mỗi dòng một tên công việc"
             value={taskLines}
             onChange={(event) => setTaskLines(event.target.value)}
           />
@@ -142,7 +148,7 @@ function AdminForm({
       ) : null}
       <div className="flex items-end">
         <Button disabled={pending} type="submit">
-          {pending ? "Saving..." : item ? "Save" : "Add"}
+          {pending ? "Đang lưu..." : item ? "Lưu" : "Thêm"}
         </Button>
       </div>
       {error ? (
@@ -155,13 +161,14 @@ function AdminForm({
 }
 
 export function AdminPage({
+  kind,
   title,
   description,
 }: {
+  kind: "users" | "departments" | "templates";
   title: string;
   description: string;
 }) {
-  const kind = title.toLowerCase() as "users" | "departments" | "templates";
   const [items, setItems] = useState<AdminItem[]>([]);
   const [editing, setEditing] = useState<AdminItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -177,7 +184,7 @@ export function AdminPage({
       .then((result) => setItems(result as AdminItem[]))
       .catch((cause: unknown) =>
         setError(
-          cause instanceof Error ? cause.message : "Unable to load data",
+          cause instanceof Error ? cause.message : "Không thể tải dữ liệu",
         ),
       );
   }, [kind]);
@@ -192,7 +199,7 @@ export function AdminPage({
   }
 
   async function remove(item: AdminItem) {
-    if (!window.confirm(`Delete ${item.name}?`)) return;
+    if (!window.confirm(`Xóa ${item.name}?`)) return;
     try {
       if (kind === "users") await usersEndpoints.remove(item.id);
       else if (kind === "departments")
@@ -200,7 +207,7 @@ export function AdminPage({
       else await templatesEndpoints.remove(item.id);
       setItems((current) => current.filter((entry) => entry.id !== item.id));
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "Unable to delete");
+      setError(cause instanceof Error ? cause.message : "Không thể xóa");
     }
   }
 
@@ -208,7 +215,7 @@ export function AdminPage({
     <section aria-labelledby="page-title" className="space-y-lg">
       <div>
         <p className="text-eyebrow uppercase text-ink-muted">
-          Open Project / Admin
+          Open Project / Quản trị
         </p>
         <h1 className="mt-xs text-headline" id="page-title">
           {title}
@@ -230,15 +237,15 @@ export function AdminPage({
         <Table.Root>
           <Table.Header>
             <Table.Row>
-              <Table.Head>Name</Table.Head>
+              <Table.Head>Tên</Table.Head>
               {kind === "users" ? (
                 <>
                   <Table.Head>Email</Table.Head>
-                  <Table.Head>Role</Table.Head>
+                  <Table.Head>Vai trò</Table.Head>
                 </>
               ) : null}
-              {kind === "templates" ? <Table.Head>Tasks</Table.Head> : null}
-              <Table.Head>Actions</Table.Head>
+              {kind === "templates" ? <Table.Head>Công việc</Table.Head> : null}
+              <Table.Head>Thao tác</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
@@ -263,14 +270,14 @@ export function AdminPage({
                       variant="ghost"
                       onClick={() => setEditing(item)}
                     >
-                      Edit
+                      Sửa
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => remove(item)}
                     >
-                      Delete
+                      Xóa
                     </Button>
                   </div>
                 </Table.Cell>
@@ -280,7 +287,7 @@ export function AdminPage({
         </Table.Root>
       </Table.Container>
       {!items.length && !error ? (
-        <p className="text-body-sm text-ink-muted">No records yet.</p>
+        <p className="text-body-sm text-ink-muted">Chưa có dữ liệu.</p>
       ) : null}
     </section>
   );
