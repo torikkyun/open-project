@@ -7,6 +7,7 @@ import type {
   Notification,
   Project,
 } from "../../api/contracts";
+import { Button, Select } from "../../components/ui";
 
 type Scope = "all" | "mine";
 
@@ -129,43 +130,71 @@ export function DashboardPage() {
             Tình trạng dự án, khối lượng công việc và các việc cần chú ý.
           </p>
         </div>
-        <div className="flex flex-wrap gap-xs">
-          <label className="sr-only" htmlFor="dashboard-scope">
-            Phạm vi tổng quan
-          </label>
-          <select
-            id="dashboard-scope"
-            className="border border-hairline bg-canvas px-sm py-xs text-body-sm"
+        <div className="flex flex-wrap gap-xs md:flex-nowrap">
+          <Select.Root
+            items={[
+              { value: "all", label: "Tất cả công việc được phép xem" },
+              { value: "mine", label: "Được giao cho tôi" },
+            ]}
             value={scope}
-            onChange={(event) => setScope(event.target.value as Scope)}
+            onValueChange={(value) => setScope(value as Scope)}
           >
-            <option value="all">Tất cả công việc được phép xem</option>
-            <option value="mine">Được giao cho tôi</option>
-          </select>
-          <label className="sr-only" htmlFor="dashboard-project">
-            Lọc theo dự án
-          </label>
-          <select
-            id="dashboard-project"
-            className="border border-hairline bg-canvas px-sm py-xs text-body-sm"
+            <Select.Trigger
+              className="w-52 min-w-0 px-3 py-2 text-sm"
+              aria-label="Phạm vi tổng quan"
+            />
+            <Select.Portal>
+              <Select.Positioner>
+                <Select.Popup>
+                  <Select.List>
+                    <Select.Item value="all">
+                      Tất cả công việc được phép xem
+                    </Select.Item>
+                    <Select.Item value="mine">Được giao cho tôi</Select.Item>
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
+          <Select.Root
+            items={[
+              { value: "", label: "Tất cả dự án" },
+              ...projects.map((project) => ({
+                value: project.id,
+                label: project.name,
+              })),
+            ]}
             value={projectId}
-            onChange={(event) => setProjectId(event.target.value)}
+            onValueChange={(value) => setProjectId(value as string)}
           >
-            <option value="">Tất cả dự án</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className="bg-primary px-md py-xs text-button text-on-primary hover:bg-blue-hover disabled:cursor-not-allowed disabled:opacity-50"
+            <Select.Trigger
+              className="w-44 min-w-0 px-3 py-2 text-sm"
+              aria-label="Lọc theo dự án"
+            />
+            <Select.Portal>
+              <Select.Positioner>
+                <Select.Popup>
+                  <Select.List>
+                    <Select.Item value="">Tất cả dự án</Select.Item>
+                    {projects.map((project) => (
+                      <Select.Item key={project.id} value={project.id}>
+                        {project.name}
+                      </Select.Item>
+                    ))}
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
+          <Button
+            className="shrink-0"
+            size="xs"
             disabled={exporting}
             type="button"
             onClick={() => void exportReport()}
           >
             {exporting ? "Đang xuất..." : "Xuất CSV"}
-          </button>
+          </Button>
         </div>
       </div>
 
