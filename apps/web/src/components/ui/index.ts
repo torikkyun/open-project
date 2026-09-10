@@ -4,6 +4,7 @@ export { Checkbox } from "./checkbox";
 export type { CheckboxIndicatorProps, CheckboxRootProps } from "./checkbox";
 export { CheckboxGroup } from "./checkbox-group";
 export type { CheckboxGroupProps } from "./checkbox-group";
+export { Combobox } from "./combobox";
 export { DatePicker } from "./date-picker";
 export type {
   DatePickerCalendarCellProps,

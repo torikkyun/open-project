@@ -3,8 +3,9 @@ import { projectsEndpoints } from "../../api/endpoints/projects";
 import { templatesEndpoints } from "../../api/endpoints/templates";
 import { usersEndpoints } from "../../api/endpoints/users";
 import type { Project, Template, User } from "../../api/contracts";
-import { Button, Dialog, Input } from "../../components/ui";
+import { Button, Combobox, Input, Select, Table } from "../../components/ui";
 import { ProjectDetailPage as ProjectDetail } from "./project-detail";
+import { ProjectFormDialog } from "./project-form-dialog";
 
 const statuses = [
   { value: "", label: "Tất cả trạng thái" },
@@ -13,24 +14,6 @@ const statuses = [
   { value: "completed", label: "Đã hoàn thành" },
   { value: "archived", label: "Đã lưu trữ" },
 ] as const;
-
-type ProjectForm = {
-  name: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-  template_id: string;
-  member_ids: string[];
-};
-
-const emptyForm: ProjectForm = {
-  name: "",
-  description: "",
-  start_date: "",
-  end_date: "",
-  template_id: "",
-  member_ids: [],
-};
 
 function formatDate(value?: string) {
   return value
@@ -42,214 +25,6 @@ function formatDate(value?: string) {
 
 function statusLabel(status?: string) {
   return statuses.find((item) => item.value === status)?.label ?? status ?? "-";
-}
-
-function ProjectFormDialog({
-  open,
-  project,
-  users,
-  templates,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  project: Project | null;
-  users: User[];
-  templates: Template[];
-  onClose: () => void;
-  onSaved: (project: Project) => void;
-}) {
-  const [form, setForm] = useState(emptyForm);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setForm(
-      project
-        ? {
-            name: project.name,
-            description: project.description ?? "",
-            start_date: project.start_date.slice(0, 10),
-            end_date: project.end_date.slice(0, 10),
-            template_id: project.template_id ?? "",
-            member_ids: [],
-          }
-        : emptyForm,
-    );
-    setError(null);
-  }, [project, open]);
-
-  function update<K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-    try {
-      const result = project
-        ? await projectsEndpoints.update(project.id, {
-            name: form.name,
-            description: form.description,
-            start_date: form.start_date,
-            end_date: form.end_date,
-          })
-        : await projectsEndpoints.create({
-            ...form,
-            template_id: form.template_id || undefined,
-          });
-      onSaved(result);
-      onClose();
-    } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "Không thể lưu dự án");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(nextOpen) => !nextOpen && onClose()}
-    >
-      <Dialog.Portal>
-        <Dialog.Backdrop />
-        <Dialog.Viewport>
-          <Dialog.Popup>
-            <Dialog.Title>{project ? "Sửa dự án" : "Tạo dự án"}</Dialog.Title>
-            <Dialog.Description>
-              Thiết lập thời gian, mẫu và thành viên ban đầu cho dự án.
-            </Dialog.Description>
-            <form className="space-y-md" onSubmit={submit}>
-              <label className="block text-body-sm" htmlFor="project-name">
-                Tên
-                <Input
-                  id="project-name"
-                  required
-                  value={form.name}
-                  onChange={(event) => update("name", event.target.value)}
-                />
-              </label>
-              <label
-                className="block text-body-sm"
-                htmlFor="project-description"
-              >
-                Mô tả
-                <textarea
-                  id="project-description"
-                  className="mt-xs min-h-24 w-full border border-hairline bg-surface-1 p-sm"
-                  value={form.description}
-                  onChange={(event) =>
-                    update("description", event.target.value)
-                  }
-                />
-              </label>
-              <div className="grid gap-md sm:grid-cols-2">
-                <label className="block text-body-sm" htmlFor="project-start">
-                  Ngày bắt đầu
-                  <input
-                    id="project-start"
-                    className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
-                    required
-                    type="date"
-                    value={form.start_date}
-                    onChange={(event) =>
-                      update("start_date", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="block text-body-sm" htmlFor="project-end">
-                  Ngày kết thúc
-                  <input
-                    id="project-end"
-                    className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
-                    required
-                    type="date"
-                    value={form.end_date}
-                    onChange={(event) => update("end_date", event.target.value)}
-                  />
-                </label>
-              </div>
-              {!project ? (
-                <>
-                  <label
-                    className="block text-body-sm"
-                    htmlFor="project-template"
-                  >
-                    Mẫu
-                    <select
-                      id="project-template"
-                      className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
-                      value={form.template_id}
-                      onChange={(event) =>
-                        update("template_id", event.target.value)
-                      }
-                    >
-                      <option value="">Không dùng mẫu</option>
-                      {templates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <fieldset>
-                    <legend className="text-body-sm">Thành viên ban đầu</legend>
-                    <div className="mt-xs grid max-h-32 gap-xs overflow-auto border border-hairline p-sm">
-                      {users.map((user) => (
-                        <label
-                          className="flex items-center gap-xs text-body-sm"
-                          key={user.id}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={form.member_ids.includes(user.id)}
-                            onChange={(event) =>
-                              update(
-                                "member_ids",
-                                event.target.checked
-                                  ? [...form.member_ids, user.id]
-                                  : form.member_ids.filter(
-                                      (id) => id !== user.id,
-                                    ),
-                              )
-                            }
-                          />
-                          {user.name}{" "}
-                          <span className="text-ink-muted">({user.email})</span>
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                </>
-              ) : null}
-              {error ? (
-                <p
-                  className="border border-error p-sm text-body-sm text-error"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              ) : null}
-              <div className="flex justify-end gap-xs">
-                <Button type="button" variant="ghost" onClick={onClose}>
-                  Hủy
-                </Button>
-                <Button disabled={pending} type="submit">
-                  {pending
-                    ? "Đang lưu..."
-                    : project
-                      ? "Lưu thay đổi"
-                      : "Tạo dự án"}
-                </Button>
-              </div>
-            </form>
-          </Dialog.Popup>
-        </Dialog.Viewport>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
 }
 
 export function ProjectsPage() {
@@ -342,9 +117,6 @@ export function ProjectsPage() {
     <section aria-labelledby="projects-title" className="space-y-xl">
       <div className="flex flex-col gap-md border-b border-hairline pb-lg md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-eyebrow uppercase text-primary">
-            Open Project / Không gian làm việc
-          </p>
           <h1 className="mt-xs text-headline" id="projects-title">
             Dự án
           </h1>
@@ -374,40 +146,79 @@ export function ProjectsPage() {
         </label>
         <label className="text-body-sm" htmlFor="project-status">
           Trạng thái
-          <select
-            id="project-status"
-            className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
+          <Select.Root
+            items={statuses.map((item) => ({
+              value: item.value,
+              label: item.label,
+            }))}
             value={status}
-            onChange={(event) => {
+            onValueChange={(value) => {
               setPage(1);
-              setStatus(event.target.value);
+              setStatus(value as string);
             }}
           >
-            {statuses.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+            <Select.Trigger
+              className="mt-xs text-sm w-full"
+              aria-label="Trạng thái"
+            />
+            <Select.Portal>
+              <Select.Positioner>
+                <Select.Popup>
+                  <Select.List>
+                    {statuses.map((item) => (
+                      <Select.Item key={item.value} value={item.value}>
+                        {item.label}
+                      </Select.Item>
+                    ))}
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
         </label>
         <label className="text-body-sm" htmlFor="project-manager">
           Người quản lý
-          <select
-            id="project-manager"
-            className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
+          <Combobox.Root
+            items={[
+              { value: "", label: "Tất cả người quản lý" },
+              ...managers.map((user) => ({ value: user.id, label: user.name })),
+            ]}
             value={managerId}
-            onChange={(event) => {
+            itemToStringLabel={(value) =>
+              value === ""
+                ? "Tất cả người quản lý"
+                : (managers.find((user) => user.id === value)?.name ?? "")
+            }
+            onValueChange={(value) => {
               setPage(1);
-              setManagerId(event.target.value);
+              setManagerId(value as string);
             }}
           >
-            <option value="">Tất cả người quản lý</option>
-            {managers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
+            <Combobox.InputGroup className="mt-xs">
+              <Combobox.Input
+                className="px-3 py-2 text-sm"
+                placeholder="Tất cả người quản lý"
+                aria-label="Người quản lý"
+              />
+              <Combobox.Clear aria-label="Xóa bộ lọc người quản lý" />
+              <Combobox.Trigger aria-label="Mở danh sách người quản lý" />
+            </Combobox.InputGroup>
+            <Combobox.Portal>
+              <Combobox.Positioner>
+                <Combobox.Popup>
+                  <Combobox.Empty>Không tìm thấy người quản lý</Combobox.Empty>
+                  <Combobox.List>
+                    <Combobox.Item value="">Tất cả người quản lý</Combobox.Item>
+                    {managers.map((user) => (
+                      <Combobox.Item key={user.id} value={user.id}>
+                        {user.name}
+                      </Combobox.Item>
+                    ))}
+                  </Combobox.List>
+                </Combobox.Popup>
+              </Combobox.Positioner>
+            </Combobox.Portal>
+          </Combobox.Root>
         </label>
       </div>
       {error ? (
@@ -429,22 +240,22 @@ export function ProjectsPage() {
         </p>
       ) : null}
       {!loading && visibleProjects.length ? (
-        <div className="overflow-x-auto border border-hairline">
-          <table className="w-full min-w-[52rem] text-left text-body-sm">
-            <caption className="sr-only">Danh sách dự án</caption>
-            <thead className="bg-surface-1 text-caption uppercase text-ink-muted">
-              <tr>
-                <th className="p-md">Dự án</th>
-                <th className="p-md">Trạng thái</th>
-                <th className="p-md">Thời gian</th>
-                <th className="p-md">Công việc</th>
-                <th className="p-md text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hairline">
+        <Table.Container>
+          <Table.Root className="min-w-[52rem] text-body-sm">
+            <Table.Caption className="sr-only">Danh sách dự án</Table.Caption>
+            <Table.Header className="text-caption uppercase text-ink-muted">
+              <Table.Row>
+                <Table.Head>Dự án</Table.Head>
+                <Table.Head>Trạng thái</Table.Head>
+                <Table.Head>Thời gian</Table.Head>
+                <Table.Head>Công việc</Table.Head>
+                <Table.Head className="text-right">Thao tác</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
               {visibleProjects.map((project) => (
-                <tr key={project.id}>
-                  <td className="p-md">
+                <Table.Row key={project.id}>
+                  <Table.Cell className="p-md">
                     <a
                       className="font-semibold text-primary underline-offset-4 hover:underline"
                       href={`/projects/${project.id}`}
@@ -454,17 +265,19 @@ export function ProjectsPage() {
                     <p className="mt-xxs max-w-sm truncate text-ink-muted">
                       {project.description || "Chưa có mô tả"}
                     </p>
-                  </td>
-                  <td className="p-md">{statusLabel(project.status)}</td>
-                  <td className="p-md whitespace-nowrap">
+                  </Table.Cell>
+                  <Table.Cell className="p-md">
+                    {statusLabel(project.status)}
+                  </Table.Cell>
+                  <Table.Cell className="p-md whitespace-nowrap">
                     {formatDate(project.start_date)} -{" "}
                     {formatDate(project.end_date)}
-                  </td>
-                  <td className="p-md whitespace-nowrap">
+                  </Table.Cell>
+                  <Table.Cell className="p-md whitespace-nowrap">
                     {project.tasks_count ?? 0} công việc /{" "}
                     {project.members_count ?? 0} thành viên
-                  </td>
-                  <td className="p-md">
+                  </Table.Cell>
+                  <Table.Cell className="p-md">
                     <div className="flex justify-end gap-xs">
                       <Button
                         size="sm"
@@ -481,12 +294,12 @@ export function ProjectsPage() {
                         Lưu trữ
                       </Button>
                     </div>
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </Table.Body>
+          </Table.Root>
+        </Table.Container>
       ) : null}
       <div className="flex items-center justify-between text-body-sm text-ink-muted">
         <span>{projects.length} dự án</span>

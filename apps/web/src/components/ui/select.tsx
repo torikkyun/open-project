@@ -12,7 +12,7 @@ interface SelectTriggerProps extends ComponentProps<typeof BaseSelect.Trigger> {
 }
 
 const triggerClasses =
-  "group flex min-w-40 cursor-pointer select-none items-center justify-between gap-2 rounded-none border-0 border-b border-hairline-strong bg-surface-1 px-4 py-[11px] text-base leading-[1.5] tracking-body text-ink transition-colors hover:not-data-[disabled]:bg-surface-2 focus-visible:border-b-2 focus-visible:border-primary focus-visible:outline-none data-[popup-open]:border-b-2 data-[popup-open]:border-primary data-[disabled]:cursor-not-allowed data-[disabled]:border-hairline data-[disabled]:bg-surface-2 data-[disabled]:text-ink-subtle";
+  "group flex min-w-0 max-w-full cursor-pointer select-none items-center justify-between gap-2 rounded-none border-0 border-b border-hairline-strong bg-surface-1 px-4 h-10 text-base leading-[1.5] tracking-body text-ink transition-colors hover:not-data-[disabled]:bg-surface-2 focus-visible:border-b-2 focus-visible:border-primary focus-visible:outline-none data-[popup-open]:border-b-2 data-[popup-open]:border-primary data-[disabled]:cursor-not-allowed data-[disabled]:border-hairline data-[disabled]:bg-surface-2 data-[disabled]:text-ink-subtle";
 
 function SelectTrigger({
   placeholder,
@@ -23,7 +23,7 @@ function SelectTrigger({
   return (
     <BaseSelect.Trigger className={cn(triggerClasses, className)} {...props}>
       <BaseSelect.Value
-        className="overflow-hidden text-ellipsis whitespace-nowrap data-[placeholder]:text-ink-subtle"
+        className="block min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap data-[placeholder]:text-ink-subtle"
         placeholder={placeholder}
       >
         {valueChildren}

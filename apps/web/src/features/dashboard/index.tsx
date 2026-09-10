@@ -7,7 +7,7 @@ import type {
   Notification,
   Project,
 } from "../../api/contracts";
-import { Button, Select } from "../../components/ui";
+import { Button, Combobox, Select } from "../../components/ui";
 
 type Scope = "all" | "mine";
 
@@ -121,8 +121,8 @@ export function DashboardPage() {
 
   return (
     <section aria-labelledby="dashboard-title" className="space-y-xl">
-      <div className="flex flex-col gap-md border-b border-hairline pb-lg md:flex-row md:items-end md:justify-between">
-        <div>
+      <div className="flex flex-col gap-md border-b border-hairline pb-lg md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0 flex-1">
           <h1 className="mt-xs text-headline" id="dashboard-title">
             Tổng quan
           </h1>
@@ -130,7 +130,7 @@ export function DashboardPage() {
             Tình trạng dự án, khối lượng công việc và các việc cần chú ý.
           </p>
         </div>
-        <div className="flex flex-wrap gap-xs md:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-xs md:flex-nowrap md:shrink-0">
           <Select.Root
             items={[
               { value: "all", label: "Tất cả công việc được phép xem" },
@@ -140,7 +140,7 @@ export function DashboardPage() {
             onValueChange={(value) => setScope(value as Scope)}
           >
             <Select.Trigger
-              className="w-52 min-w-0 px-3 py-2 text-sm"
+              className="min-w-0 w-40 px-3 py-2 text-sm"
               aria-label="Phạm vi tổng quan"
             />
             <Select.Portal>
@@ -156,7 +156,7 @@ export function DashboardPage() {
               </Select.Positioner>
             </Select.Portal>
           </Select.Root>
-          <Select.Root
+          <Combobox.Root
             items={[
               { value: "", label: "Tất cả dự án" },
               ...projects.map((project) => ({
@@ -165,30 +165,41 @@ export function DashboardPage() {
               })),
             ]}
             value={projectId}
+            itemToStringLabel={(value) =>
+              value === ""
+                ? "Tất cả dự án"
+                : (projects.find((project) => project.id === value)?.name ?? "")
+            }
             onValueChange={(value) => setProjectId(value as string)}
           >
-            <Select.Trigger
-              className="w-44 min-w-0 px-3 py-2 text-sm"
-              aria-label="Lọc theo dự án"
-            />
-            <Select.Portal>
-              <Select.Positioner>
-                <Select.Popup>
-                  <Select.List>
-                    <Select.Item value="">Tất cả dự án</Select.Item>
+            <Combobox.InputGroup className="min-w-0 max-w-[16rem] shrink">
+              <Combobox.Input
+                className="px-3 py-2 text-sm"
+                placeholder="Tất cả dự án"
+                aria-label="Lọc theo dự án"
+              />
+              <Combobox.Clear aria-label="Xóa bộ lọc dự án" />
+              <Combobox.Trigger aria-label="Mở danh sách dự án" />
+            </Combobox.InputGroup>
+            <Combobox.Portal>
+              <Combobox.Positioner>
+                <Combobox.Popup>
+                  <Combobox.Empty>Không tìm thấy dự án</Combobox.Empty>
+                  <Combobox.List>
+                    <Combobox.Item value="">Tất cả dự án</Combobox.Item>
                     {projects.map((project) => (
-                      <Select.Item key={project.id} value={project.id}>
+                      <Combobox.Item key={project.id} value={project.id}>
                         {project.name}
-                      </Select.Item>
+                      </Combobox.Item>
                     ))}
-                  </Select.List>
-                </Select.Popup>
-              </Select.Positioner>
-            </Select.Portal>
-          </Select.Root>
+                  </Combobox.List>
+                </Combobox.Popup>
+              </Combobox.Positioner>
+            </Combobox.Portal>
+          </Combobox.Root>
           <Button
             className="shrink-0"
-            size="xs"
+            size="sm"
             disabled={exporting}
             type="button"
             onClick={() => void exportReport()}
