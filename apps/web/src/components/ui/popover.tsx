@@ -1,165 +1,87 @@
-import { Popover as BasePopover } from "@base-ui/react";
-import type { ComponentProps } from "react";
-import {
-  buttonBase,
-  buttonSizes,
-  buttonVariants,
-  type ButtonSize,
-  type ButtonVariant,
-} from "./button";
-import { cn } from "./cn";
+import * as React from "react"
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
+import { cn } from "cn"
 
-export type PopoverRootProps = ComponentProps<typeof BasePopover.Root>;
-export type PopoverPortalProps = ComponentProps<typeof BasePopover.Portal>;
-export type PopoverBackdropProps = ComponentProps<typeof BasePopover.Backdrop>;
-export type PopoverPositionerProps = ComponentProps<
-  typeof BasePopover.Positioner
->;
-export type PopoverPopupProps = ComponentProps<typeof BasePopover.Popup>;
-export type PopoverArrowProps = ComponentProps<typeof BasePopover.Arrow>;
-export type PopoverViewportProps = ComponentProps<typeof BasePopover.Viewport>;
-export type PopoverTitleProps = ComponentProps<typeof BasePopover.Title>;
-export type PopoverDescriptionProps = ComponentProps<
-  typeof BasePopover.Description
->;
-export type PopoverCloseProps = ComponentProps<typeof BasePopover.Close>;
-
-function PopoverRoot(props: PopoverRootProps) {
-  return <BasePopover.Root {...props} />;
+function Popover({ ...props }: PopoverPrimitive.Root.Props) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
-export interface PopoverTriggerProps extends ComponentProps<
-  typeof BasePopover.Trigger
-> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
 }
 
-function PopoverTrigger({
-  variant = "outline",
-  size = "default",
+function PopoverContent({
+  className,
+  align = "center",
+  alignOffset = 0,
+  side = "bottom",
+  sideOffset = 4,
+  ...props
+}: PopoverPrimitive.Popup.Props &
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "side" | "sideOffset"
+  >) {
+  return (
+    <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}
+        className="isolate z-50"
+      >
+        <PopoverPrimitive.Popup
+          data-slot="popover-content"
+          className={cn(
+            "z-50 flex w-72 origin-(--transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
+          {...props}
+        />
+      </PopoverPrimitive.Positioner>
+    </PopoverPrimitive.Portal>
+  )
+}
+
+function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="popover-header"
+      className={cn("flex flex-col gap-0.5 text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props) {
+  return (
+    <PopoverPrimitive.Title
+      data-slot="popover-title"
+      className={cn("font-medium", className)}
+      {...props}
+    />
+  )
+}
+
+function PopoverDescription({
   className,
   ...props
-}: PopoverTriggerProps) {
+}: PopoverPrimitive.Description.Props) {
   return (
-    <BasePopover.Trigger
-      className={cn(
-        buttonBase,
-        buttonSizes[size],
-        buttonVariants[variant],
-        "data-[popup-open]:bg-surface-1",
-        className,
-      )}
+    <PopoverPrimitive.Description
+      data-slot="popover-description"
+      className={cn("text-muted-foreground", className)}
       {...props}
     />
-  );
+  )
 }
 
-function PopoverPortal(props: PopoverPortalProps) {
-  return <BasePopover.Portal {...props} />;
+export {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
 }
-
-function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
-  return (
-    <BasePopover.Backdrop
-      className={cn("fixed inset-0 z-[1399]", className)}
-      {...props}
-    />
-  );
-}
-
-function PopoverPositioner({
-  className,
-  sideOffset = 8,
-  collisionPadding = 8,
-  ...props
-}: PopoverPositionerProps) {
-  return (
-    <BasePopover.Positioner
-      className={cn("z-[1400] max-w-[var(--available-width)]", className)}
-      sideOffset={sideOffset}
-      collisionPadding={collisionPadding}
-      {...props}
-    />
-  );
-}
-
-function PopoverPopup({ className, ...props }: PopoverPopupProps) {
-  return (
-    <BasePopover.Popup
-      className={cn(
-        "relative flex w-[20rem] max-w-[calc(100vw-2rem)] max-h-[var(--available-height)] origin-[var(--transform-origin)] flex-col overflow-auto rounded-none border border-hairline-strong bg-canvas p-4 text-ink outline-none transition-[scale,opacity] duration-150 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-function PopoverArrow({ className, ...props }: PopoverArrowProps) {
-  return (
-    <BasePopover.Arrow
-      className={cn(
-        "relative block size-2 rotate-45 border-l border-t border-hairline-strong bg-canvas data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=right]:-left-1 data-[side=top]:-bottom-1",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-function PopoverViewport({ className, ...props }: PopoverViewportProps) {
-  return (
-    <BasePopover.Viewport
-      className={cn("relative h-full w-full overflow-clip", className)}
-      {...props}
-    />
-  );
-}
-
-function PopoverTitle({ className, ...props }: PopoverTitleProps) {
-  return (
-    <BasePopover.Title
-      className={cn("text-card-title text-ink", className)}
-      {...props}
-    />
-  );
-}
-
-function PopoverDescription({ className, ...props }: PopoverDescriptionProps) {
-  return (
-    <BasePopover.Description
-      className={cn("mt-1 text-body-sm text-ink-muted", className)}
-      {...props}
-    />
-  );
-}
-
-function PopoverClose({ className, children, ...props }: PopoverCloseProps) {
-  return (
-    <BasePopover.Close
-      className={cn(
-        "inline-flex min-h-10 cursor-pointer items-center justify-center rounded-none border border-transparent px-3 text-button text-primary hover:bg-surface-1 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus",
-        className,
-      )}
-      {...props}
-    >
-      {children ?? "Close"}
-    </BasePopover.Close>
-  );
-}
-
-export const Popover = {
-  Root: PopoverRoot,
-  Trigger: PopoverTrigger,
-  Portal: PopoverPortal,
-  Backdrop: PopoverBackdrop,
-  Positioner: PopoverPositioner,
-  Popup: PopoverPopup,
-  Arrow: PopoverArrow,
-  Viewport: PopoverViewport,
-  Title: PopoverTitle,
-  Description: PopoverDescription,
-  Close: PopoverClose,
-  createHandle: BasePopover.createHandle,
-};

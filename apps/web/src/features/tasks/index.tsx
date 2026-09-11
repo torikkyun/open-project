@@ -11,6 +11,7 @@ import type {
   Task,
   TaskHistory,
 } from "../../api/contracts";
+import { Button, Textarea } from "../../components/ui";
 
 const taskStatusLabels: Record<string, string> = {
   todo: "Cần làm",
@@ -212,27 +213,22 @@ export function TaskDetailPage() {
               <label className="text-body-sm" htmlFor="task-comment">
                 {replyTo ? "Trả lời" : "Thêm bình luận"}
               </label>
-              <textarea
-                className="min-h-24 w-full border border-hairline p-sm"
+              <Textarea
+                className="min-h-24"
                 id="task-comment"
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
               />
               <div className="flex gap-sm">
-                <button
-                  className="bg-primary px-md py-xs text-button text-on-primary"
-                  type="submit"
-                >
-                  Đăng bình luận
-                </button>
+                <Button type="submit">Đăng bình luận</Button>
                 {replyTo ? (
-                  <button
-                    className="border border-hairline px-md py-xs text-button"
+                  <Button
+                    variant="outline"
                     type="button"
                     onClick={() => setReplyTo(undefined)}
                   >
                     Hủy trả lời
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </form>
@@ -245,7 +241,7 @@ export function TaskDetailPage() {
               <h2 className="text-subhead" id="files-title">
                 Tệp
               </h2>
-              <label className="bg-primary px-md py-xs text-button text-on-primary">
+              <label className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-primary px-md py-xs text-button text-on-primary">
                 Tải lên
                 <input
                   className="sr-only"
@@ -264,8 +260,9 @@ export function TaskDetailPage() {
                   key={file.id}
                 >
                   <span className="text-body-sm">{file.file_name}</span>
-                  <button
-                    className="text-body-sm text-primary underline"
+                  <Button
+                    variant="link"
+                    size="sm"
                     type="button"
                     onClick={() =>
                       documentsEndpoints
@@ -276,7 +273,7 @@ export function TaskDetailPage() {
                     }
                   >
                     Tải xuống
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -318,13 +315,14 @@ export function TaskDetailPage() {
               <h2 className="text-subhead" id="notifications-title">
                 Thông báo
               </h2>
-              <button
-                className="text-body-sm text-primary underline"
+              <Button
+                variant="link"
+                size="sm"
                 type="button"
                 onClick={() => void markAllRead()}
               >
                 Đánh dấu tất cả đã đọc
-              </button>
+              </Button>
             </div>
             <ul className="mt-md divide-y divide-hairline">
               {notifications.map((item) => (
@@ -332,8 +330,9 @@ export function TaskDetailPage() {
                   className={`py-sm ${item.is_read ? "text-ink-muted" : "font-semibold"}`}
                   key={item.id}
                 >
-                  <button
-                    className="text-left text-body-sm"
+                  <Button
+                    variant="link"
+                    className="h-auto justify-start p-0 text-left text-body-sm"
                     type="button"
                     onClick={() =>
                       notificationsEndpoints
@@ -350,7 +349,7 @@ export function TaskDetailPage() {
                     }
                   >
                     {item.content}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>

@@ -3,7 +3,14 @@ import { departmentsEndpoints } from "../../api/endpoints/departments";
 import { templatesEndpoints } from "../../api/endpoints/templates";
 import { usersEndpoints } from "../../api/endpoints/users";
 import type { Department, Template, User, UserRole } from "../../api/contracts";
-import { Button, Input, Table } from "../../components/ui";
+import {
+  Button,
+  Input,
+  NativeSelect,
+  NativeSelectOption,
+  Table,
+  Textarea,
+} from "../../components/ui";
 
 const roles: UserRole[] = ["admin", "project_manager", "member", "guest"];
 const roleLabels: Record<UserRole, string> = {
@@ -112,24 +119,24 @@ function AdminForm({
       {kind === "users" ? (
         <label className="text-body-sm">
           Vai trò
-          <select
-            className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
+          <NativeSelect
+            className="mt-xs w-full"
             value={role}
             onChange={(event) => setRole(event.target.value as UserRole)}
           >
             {roles.map((value) => (
-              <option key={value} value={value}>
+              <NativeSelectOption key={value} value={value}>
                 {roleLabels[value]}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       ) : null}
       {kind === "templates" ? (
         <label className="text-body-sm md:col-span-2">
           Mô tả
-          <textarea
-            className="mt-xs min-h-20 w-full border border-hairline bg-surface-1 p-sm"
+          <Textarea
+            className="mt-xs min-h-20"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
@@ -138,8 +145,8 @@ function AdminForm({
       {kind === "templates" ? (
         <label className="text-body-sm md:col-span-2">
           Cấu trúc công việc
-          <textarea
-            className="mt-xs min-h-24 w-full border border-hairline bg-surface-1 p-sm"
+          <Textarea
+            className="mt-xs min-h-24"
             placeholder="Mỗi dòng một tên công việc"
             value={taskLines}
             onChange={(event) => setTaskLines(event.target.value)}
@@ -233,7 +240,7 @@ export function AdminPage({
           {error}
         </p>
       ) : null}
-      <Table.Container>
+      {/* <Table.Container>
         <Table.Root>
           <Table.Header>
             <Table.Row>
@@ -285,7 +292,7 @@ export function AdminPage({
             ))}
           </Table.Body>
         </Table.Root>
-      </Table.Container>
+      </Table.Container> */}
       {!items.length && !error ? (
         <p className="text-body-sm text-ink-muted">Chưa có dữ liệu.</p>
       ) : null}

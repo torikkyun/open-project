@@ -1,14 +1,19 @@
-import { Input as BaseInput } from "@base-ui/react";
-import type { ComponentProps } from "react";
-import { cn } from "./cn";
+import * as React from "react"
+import { Input as InputPrimitive } from "@base-ui/react/input"
+import { cn } from "cn"
 
-export type InputProps = ComponentProps<typeof BaseInput>;
-
-const inputClasses =
-  "min-h-12 w-full rounded-none border-0 border-b border-hairline-strong bg-surface-1 px-4 py-[11px] text-base leading-[1.5] tracking-body text-ink transition-colors placeholder:text-ink-subtle enabled:hover:bg-surface-2 focus:border-b-2 focus:border-primary focus:outline-none data-[invalid]:border-b-2 data-[invalid]:border-error disabled:cursor-not-allowed disabled:border-hairline disabled:bg-surface-2 disabled:text-ink-subtle";
-
-function Input({ className, ...props }: InputProps) {
-  return <BaseInput className={cn(inputClasses, className)} {...props} />;
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <InputPrimitive
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export { Input };
+export { Input }

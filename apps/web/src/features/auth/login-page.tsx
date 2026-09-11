@@ -3,6 +3,17 @@ import type { FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { authEndpoints } from "../../api/endpoints";
 import { setSessionTokens } from "../../api/client";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "../../components/ui";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -31,48 +42,54 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface-1 p-md">
-      <form
-        className="w-full max-w-[28rem] space-y-lg border border-hairline bg-canvas p-xl"
-        onSubmit={handleSubmit}
-      >
-        <div>
-          <p className="text-eyebrow uppercase text-primary">Open Project</p>
-          <h1 className="mt-xs text-headline">Đăng nhập</h1>
-        </div>
-        <label className="block space-y-xxs text-body-sm">
-          Email
-          <input
-            className="mt-xxs block w-full border border-hairline-strong p-sm"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
-          />
-        </label>
-        <label className="block space-y-xxs text-body-sm">
-          Mật khẩu
-          <input
-            className="mt-xxs block w-full border border-hairline-strong p-sm"
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-        </label>
-        {error ? (
-          <p className="text-body-sm text-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <button
-          className="w-full bg-primary px-md py-sm text-button text-on-primary disabled:opacity-50"
-          disabled={pending}
-          type="submit"
-        >
-          {pending ? "Đang đăng nhập..." : "Đăng nhập"}
-        </button>
-      </form>
+    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="space-y-1">
+          <CardDescription className="text-xs font-medium uppercase tracking-wider text-primary">
+            Open Project
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold">Đăng nhập</CardTitle>
+        </CardHeader>
+
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4 pb-(--card-spacing)">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                required
+                type="email"
+                value={email}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <Input
+                id="password"
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                type="password"
+                value={password}
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm font-medium text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+          </CardContent>
+
+          <CardFooter>
+            <Button className="w-full" disabled={pending} type="submit">
+              {pending ? "Đang đăng nhập..." : "Đăng nhập"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </main>
   );
 }

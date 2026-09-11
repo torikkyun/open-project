@@ -1,7 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { projectsEndpoints } from "../../api/endpoints/projects";
 import type { Project, Template, User } from "../../api/contracts";
-import { Button, Checkbox, Dialog, Input, Select } from "../../components/ui";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  Input,
+  Select,
+  Textarea,
+} from "../../components/ui";
 
 type ProjectForm = {
   name: string;
@@ -113,9 +120,9 @@ export function ProjectFormDialog({
                 htmlFor="project-description"
               >
                 Mô tả
-                <textarea
+                <Textarea
                   id="project-description"
-                  className="mt-xs min-h-24 w-full border border-hairline bg-surface-1 p-sm"
+                  className="mt-xs min-h-24"
                   value={form.description}
                   onChange={(event) =>
                     update("description", event.target.value)
@@ -125,9 +132,8 @@ export function ProjectFormDialog({
               <div className="grid gap-md sm:grid-cols-2">
                 <label className="block text-body-sm" htmlFor="project-start">
                   Ngày bắt đầu
-                  <input
+                  <Input
                     id="project-start"
-                    className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
                     required
                     type="date"
                     value={form.start_date}
@@ -138,9 +144,8 @@ export function ProjectFormDialog({
                 </label>
                 <label className="block text-body-sm" htmlFor="project-end">
                   Ngày kết thúc
-                  <input
+                  <Input
                     id="project-end"
-                    className="mt-xs min-h-12 w-full border-b border-hairline-strong bg-surface-1 px-md"
                     required
                     type="date"
                     value={form.end_date}

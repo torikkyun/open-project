@@ -1,97 +1,28 @@
-import { Checkbox as BaseCheckbox } from "@base-ui/react";
-import type { ComponentProps } from "react";
-import { cn } from "./cn";
+"use client"
 
-export type CheckboxRootProps = ComponentProps<typeof BaseCheckbox.Root>;
-export type CheckboxIndicatorProps = ComponentProps<
-  typeof BaseCheckbox.Indicator
->;
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
+import { cn } from "cn"
+import { CheckIcon } from "lucide-react"
 
-function DefaultIndicator() {
+function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
   return (
-    <BaseCheckbox.Indicator
-      className="flex items-center justify-center"
-      render={(props, state) => (
-        <span {...props}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d={state.indeterminate ? "M3 8h10" : "m3 8 3 3 7-7"}
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="square"
-            />
-          </svg>
-        </span>
-      )}
-    />
-  );
-}
-
-function CheckboxRoot({
-  className,
-  children,
-  style,
-  ...props
-}: CheckboxRootProps) {
-  return (
-    <BaseCheckbox.Root
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
       className={cn(
-        "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-none border p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-        (state) => {
-          if (state.disabled) {
-            return "cursor-not-allowed border-hairline bg-surface-2 text-ink-subtle";
-          }
-
-          if (state.checked || state.indeterminate) {
-            return "border-primary bg-primary text-on-primary";
-          }
-
-          return "border-hairline-strong bg-canvas text-on-primary";
-        },
-        className,
+        "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary",
+        className
       )}
-      style={
-        typeof style === "function"
-          ? (state) => ({
-              width: 20,
-              height: 20,
-              backgroundColor: state.disabled
-                ? "var(--color-surface-2)"
-                : undefined,
-              ...style(state),
-            })
-          : (state) => ({
-              width: 20,
-              height: 20,
-              backgroundColor: state.disabled
-                ? "var(--color-surface-2)"
-                : undefined,
-              ...style,
-            })
-      }
       {...props}
     >
-      {children ?? <DefaultIndicator />}
-    </BaseCheckbox.Root>
-  );
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
+      >
+        <CheckIcon
+        />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
 }
 
-function CheckboxIndicator({ className, ...props }: CheckboxIndicatorProps) {
-  return (
-    <BaseCheckbox.Indicator
-      className={cn("flex items-center justify-center", className)}
-      {...props}
-    />
-  );
-}
-
-export const Checkbox = {
-  Root: CheckboxRoot,
-  Indicator: CheckboxIndicator,
-};
+export { Checkbox }
