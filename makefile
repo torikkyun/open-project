@@ -1,17 +1,9 @@
+.PHONY: docker-dev docker-test
+
+COMPOSE_DEV := docker compose -f docker/compose.dev.yml
+COMPOSE_TEST := docker compose -f docker/compose.test.yml
+
 docker-dev:
-	docker-compose -f ./docker/compose.dev.yml up -d --build
-
-prisma-studio:
-	pnpm -F=api exec prisma studio
-
-prisma-dev:
-	pnpm -F=api exec prisma migrate dev && pnpm -F=api exec prisma generate
-
-seed-dev:
-	pnpm -F=api exec prisma db seed -- --environment development
-
-be-dev:
-	pnpm -F=api exec pnpm dev
-
-fe-dev:
-	pnpm -F=web exec pnpm dev
+	$(COMPOSE_DEV) up -d --build
+docker-test:
+	$(COMPOSE_TEST) up -d --build

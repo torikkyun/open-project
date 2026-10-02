@@ -1,32 +1,54 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+.idea
+.ipynb_checkpoints
+.mypy_cache
+.vscode
+__pycache__
+.pytest_cache
+htmlcov
+dist
+site
+site_zensical_src
+.coverage*
+coverage.xml
+.netlify
+test.db
+log.txt
+Pipfile.lock
+env3.*
+env
+docs_build
+site_build
+venv
+docs.zip
+archive.zip
 
-# Dependencies
+*~
+.*.sw?
+.cache
+
+.DS_Store
+
+.codspeed
+
 node_modules
-.pnp
-.pnp.js
 
-# Local env files
+.eslintcache
+
+.cache
+.vercel
+.output
+.vinxi
+
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.development
+.env.test
+.env.production
 
-# Testing
-coverage
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+/.vite-inspect
 
-# Turbo
-.turbo
-
-# Vercel
-.vercel
-
-# Build Outputs
-out/
-build
-dist
-
-# Misc
-.DS_Store
-*.pem
-docs/
+.tanstack-start/
+.tanstack/
+.nitro/
