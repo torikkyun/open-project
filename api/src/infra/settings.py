@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = ""
     auth_secret_key: str = ""
+    cors_origins: list[str] = ["http://localhost:3000"]
     auth_token_expire_minutes: int = 60
     auth_refresh_token_expire_days: int = 30
     cookie_secure: bool = False
