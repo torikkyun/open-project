@@ -3,27 +3,24 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import {
   api,
-  clearAccessToken,
-  getAccessToken,
-  type Project,
   type Task,
   type TaskStatus,
   type User,
 } from "@/api"
-import { AUTH_EXPIRED_EVENT } from "@/api/client"
-import { LoginForm } from "@/components/login-form"
+import { useAppLayout } from "@/components/app-layout-context"
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { FolderKanban, LayoutDashboard, Users } from "lucide-react"
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_app/")({
   component: App,
 })
 
 function App() {
-  const [user, setUser] = useState<User | null>(null)
-  const [sessionLoading, setSessionLoading] = useState(true)
-  const [projects, setProjects] = useState<Project[]>([])
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const { user } = useAuth()
+  const { projects, setProjects, selectedProjectId, setSelectedProjectId } =
+    useAppLayout()
   const [members, setMembers] = useState<User[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
@@ -36,43 +33,6 @@ function App() {
     (project) => project.id === selectedProjectId,
   )
   const selectedTask = tasks.find((task) => task.id === selectedTaskId)
-
-  useEffect(() => {
-    let active = true
-    if (!getAccessToken()) {
-      setSessionLoading(false)
-      return
-    }
-    api
-      .currentUser()
-      .then((currentUser) => {
-        if (active) setUser(currentUser)
-      })
-      .catch((cause: unknown) => {
-        clearAccessToken()
-        if (active) setError(errorMessage(cause))
-      })
-      .finally(() => {
-        if (active) setSessionLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
-
-  useEffect(() => {
-    const expireSession = () => {
-      setUser(null)
-      setProjects([])
-      setMembers([])
-      setTasks([])
-      setSelectedProjectId(null)
-      setSelectedTaskId(null)
-      setError("Your session expired. Log in again.")
-    }
-    window.addEventListener(AUTH_EXPIRED_EVENT, expireSession)
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, expireSession)
-  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -156,22 +116,6 @@ function App() {
     }
   }
 
-  function handleLogin(currentUser: User) {
-    setError(null)
-    setUser(currentUser)
-  }
-
-  function handleLogout() {
-    clearAccessToken()
-    setUser(null)
-    setProjects([])
-    setMembers([])
-    setTasks([])
-    setSelectedProjectId(null)
-    setSelectedTaskId(null)
-    setError(null)
-  }
-
   async function createProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
@@ -203,7 +147,7 @@ function App() {
   }
 
   async function deleteProject() {
-    if (!selectedProject || !window.confirm(`Delete "${selectedProject.name}"?`))
+    if (!selectedProject || !window.confirm(`Xóa dự án "${selectedProject.name}"?`))
       return
     await run(async () => {
       await api.deleteProject(selectedProject.id)
@@ -279,7 +223,7 @@ function App() {
     if (
       !selectedProjectId ||
       !selectedTask ||
-      !window.confirm(`Delete "${selectedTask.title}"?`)
+      !window.confirm(`Xóa công việc "${selectedTask.title}"?`)
     )
       return
     await run(async () => {
@@ -327,63 +271,36 @@ function App() {
     })
   }
 
-  if (sessionLoading) {
-    return <main className="mx-auto max-w-5xl p-8">Checking session...</main>
-  }
-  if (!user) {
-    return (
-      <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center p-6">
-        {error && (
-          <p role="alert" className="mb-4 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <LoginForm onAuthenticated={handleLogin} />
-      </main>
-    )
-  }
+  if (!user) return null
 
   return (
-    <main className="min-h-screen bg-muted/30">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-4">
-        <div>
-          <h1 className="text-xl font-semibold">Open Project</h1>
-          <p className="text-sm text-muted-foreground">
-            {user.full_name} · {user.email}
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Log out
-        </Button>
-      </header>
+    <main className="min-h-[calc(100svh-3.5rem)] bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="grid gap-4 sm:grid-cols-3">
+          <SummaryCard
+            label="Dự án"
+            value={projects.length}
+            icon={<FolderKanban />}
+          />
+          <SummaryCard
+            label="Công việc"
+            value={tasks.length}
+            icon={<LayoutDashboard />}
+          />
+          <SummaryCard
+            label="Thành viên"
+            value={members.length}
+            icon={<Users />}
+          />
+        </section>
 
-      <div className="mx-auto grid max-w-7xl gap-6 p-6 lg:grid-cols-[260px_1fr]">
+        <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
         <aside className="space-y-5 rounded-lg border bg-background p-4">
-          <section>
-            <h2 className="mb-3 font-semibold">Projects</h2>
-            <div className="space-y-1">
-              {projects.map((project) => (
-                <button
-                  key={project.id}
-                  type="button"
-                  onClick={() => setSelectedProjectId(project.id)}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm hover:bg-muted ${
-                    project.id === selectedProjectId ? "bg-muted font-medium" : ""
-                  }`}
-                >
-                  {project.name}
-                </button>
-              ))}
-              {!projects.length && (
-                <p className="text-sm text-muted-foreground">No projects yet.</p>
-              )}
-            </div>
-          </section>
           <form onSubmit={createProject} className="space-y-2 border-t pt-4">
-            <h3 className="text-sm font-medium">Create project</h3>
-            <Input name="name" placeholder="Project name" required maxLength={160} />
-            <Input name="description" placeholder="Description (optional)" />
-            <Button type="submit" size="sm">Create project</Button>
+            <h3 className="text-sm font-medium">Tạo dự án</h3>
+            <Input name="name" placeholder="Tên dự án" required maxLength={160} />
+            <Input name="description" placeholder="Mô tả (không bắt buộc)" />
+            <Button type="submit" size="sm">Tạo dự án</Button>
           </form>
         </aside>
 
@@ -396,9 +313,9 @@ function App() {
 
           {!selectedProject ? (
             <div className="rounded-lg border bg-background p-8">
-              <h2 className="text-lg font-semibold">Select or create a project</h2>
+              <h2 className="text-lg font-semibold">Chọn hoặc tạo dự án</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Projects and tasks will appear here.
+                Dự án và công việc sẽ hiển thị tại đây.
               </p>
             </div>
           ) : (
@@ -408,12 +325,12 @@ function App() {
                   <div>
                     <h2 className="text-xl font-semibold">{selectedProject.name}</h2>
                     <p className="text-sm text-muted-foreground">
-                      {selectedProject.description || "No description"}
+                      {selectedProject.description || "Chưa có mô tả"}
                     </p>
                   </div>
                   {selectedProject.owner_id === user.id && (
                     <Button variant="destructive" onClick={deleteProject}>
-                      Delete project
+                      Xóa dự án
                     </Button>
                   )}
                 </div>
@@ -423,15 +340,15 @@ function App() {
                     onSubmit={saveProject}
                     className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
                   >
-                    <Input name="name" defaultValue={selectedProject.name} required maxLength={160} aria-label="Project name" />
-                    <Input name="description" defaultValue={selectedProject.description ?? ""} aria-label="Project description" />
-                    <Button type="submit" variant="outline">Save details</Button>
+                    <Input name="name" defaultValue={selectedProject.name} required maxLength={160} aria-label="Tên dự án" />
+                    <Input name="description" defaultValue={selectedProject.description ?? ""} aria-label="Mô tả dự án" />
+                    <Button type="submit" variant="outline">Lưu thông tin</Button>
                   </form>
                 )}
               </section>
 
               <section className="rounded-lg border bg-background p-5">
-                <h2 className="mb-3 font-semibold">Members</h2>
+                <h2 className="mb-3 font-semibold">Thành viên</h2>
                 <div className="mb-4 flex flex-wrap gap-2">
                   {members.map((member) => (
                     <div key={member.id} className="flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm">
@@ -446,19 +363,19 @@ function App() {
                 </div>
                 {selectedProject.owner_id === user.id && (
                   <form onSubmit={addMember} className="flex max-w-xl gap-2">
-                    <Input name="user_id" placeholder="Member user ID" required aria-label="Member user ID" />
-                    <Button type="submit" variant="outline">Add member</Button>
+                    <Input name="user_id" placeholder="Mã người dùng" required aria-label="Mã người dùng" />
+                    <Button type="submit" variant="outline">Thêm thành viên</Button>
                   </form>
                 )}
               </section>
 
               <section className="grid gap-6 xl:grid-cols-[minmax(280px,0.8fr)_minmax(360px,1.2fr)]">
                 <div className="space-y-4 rounded-lg border bg-background p-5">
-                  <h2 className="font-semibold">Tasks</h2>
+                  <h2 className="font-semibold">Công việc</h2>
                   <form onSubmit={createTask} className="space-y-2">
-                    <Input name="title" placeholder="Task title" required maxLength={200} />
-                    <Input name="description" placeholder="Description (optional)" />
-                    <Button type="submit" size="sm">Create task</Button>
+                    <Input name="title" placeholder="Tên công việc" required maxLength={200} />
+                    <Input name="description" placeholder="Mô tả (không bắt buộc)" />
+                    <Button type="submit" size="sm">Tạo công việc</Button>
                   </form>
                   <div className="space-y-1 border-t pt-3">
                     {tasks.map((task) => (
@@ -474,7 +391,7 @@ function App() {
                         <span className="text-xs text-muted-foreground">{task.status.replace("_", " ")}</span>
                       </button>
                     ))}
-                    {!tasks.length && <p className="text-sm text-muted-foreground">No tasks yet.</p>}
+                    {!tasks.length && <p className="text-sm text-muted-foreground">Chưa có công việc.</p>}
                   </div>
                 </div>
 
@@ -482,42 +399,42 @@ function App() {
                   {selectedTask ? (
                     <>
                       <div className="flex items-start justify-between gap-3">
-                        <h2 className="font-semibold">Task details</h2>
-                        <Button variant="destructive" size="sm" onClick={deleteTask}>Delete task</Button>
+                        <h2 className="font-semibold">Chi tiết công việc</h2>
+                        <Button variant="destructive" size="sm" onClick={deleteTask}>Xóa công việc</Button>
                       </div>
                       <form key={selectedTask.id} onSubmit={saveTask} className="grid gap-3 sm:grid-cols-2">
                         <label className="space-y-1 text-sm sm:col-span-2">
-                          Title
+                          Tên
                           <Input name="title" defaultValue={selectedTask.title} required maxLength={200} />
                         </label>
                         <label className="space-y-1 text-sm sm:col-span-2">
-                          Description
+                          Mô tả
                           <Input name="description" defaultValue={selectedTask.description ?? ""} />
                         </label>
                         <label className="space-y-1 text-sm">
-                          Status
+                          Trạng thái
                           <select name="status" defaultValue={selectedTask.status} className="h-9 w-full rounded-md border bg-background px-3">
-                            <option value="todo">To do</option>
-                            <option value="in_progress">In progress</option>
-                            <option value="done">Done</option>
+                            <option value="todo">Cần làm</option>
+                            <option value="in_progress">Đang thực hiện</option>
+                            <option value="done">Hoàn thành</option>
                           </select>
                         </label>
                         <label className="space-y-1 text-sm">
-                          Assignee
+                          Người phụ trách
                           <select name="assignee_id" defaultValue={selectedTask.assignee_id ?? ""} className="h-9 w-full rounded-md border bg-background px-3">
-                            <option value="">Unassigned</option>
+                            <option value="">Chưa giao</option>
                             {members.map((member) => <option key={member.id} value={member.id}>{member.full_name}</option>)}
                           </select>
                         </label>
                         <label className="space-y-1 text-sm sm:col-span-2">
-                          Due date
+                          Hạn hoàn thành
                           <Input name="due_at" type="datetime-local" defaultValue={localDateTime(selectedTask.due_at)} />
                         </label>
-                        <Button type="submit" variant="outline" className="sm:col-span-2">Save task</Button>
+                        <Button type="submit" variant="outline" className="sm:col-span-2">Lưu công việc</Button>
                       </form>
 
                       <div className="border-t pt-4">
-                        <h3 className="mb-3 font-medium">Comments</h3>
+                        <h3 className="mb-3 font-medium">Bình luận</h3>
                         <CommentList
                           projectId={selectedProject.id}
                           taskId={selectedTask.id}
@@ -530,7 +447,7 @@ function App() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Select a task to view details and comments.</p>
+                    <p className="text-sm text-muted-foreground">Chọn công việc để xem chi tiết và bình luận.</p>
                   )}
                 </div>
               </section>
@@ -539,12 +456,12 @@ function App() {
 
           {user.role === "admin" && (
             <section className="space-y-4 rounded-lg border bg-background p-5">
-              <h2 className="font-semibold">User management</h2>
+              <h2 className="font-semibold">Quản lý người dùng</h2>
               <form onSubmit={createUser} className="grid gap-2 sm:grid-cols-4">
-                <Input name="full_name" placeholder="Full name" required maxLength={160} />
+                <Input name="full_name" placeholder="Họ và tên" required maxLength={160} />
                 <Input name="email" type="email" placeholder="Email" required />
-                <Input name="password" type="password" placeholder="Password (12+ chars)" minLength={12} maxLength={128} required />
-                <Button type="submit">Create user</Button>
+                <Input name="password" type="password" placeholder="Mật khẩu (ít nhất 12 ký tự)" minLength={12} maxLength={128} required />
+                <Button type="submit">Tạo người dùng</Button>
               </form>
               {userListError && <p role="alert" className="text-sm text-destructive">{userListError}</p>}
               <div className="divide-y">
@@ -558,8 +475,29 @@ function App() {
             </section>
           )}
         </section>
+        </div>
       </div>
     </main>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: number
+  icon: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border bg-background p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <span className="text-muted-foreground">{icon}</span>
+      </div>
+      <p className="text-2xl font-semibold">{value}</p>
+    </div>
   )
 }
 
@@ -601,18 +539,18 @@ function CommentList({
       {comments.map((comment) => (
         <article key={comment.id} className="rounded-md bg-muted/60 p-3 text-sm">
           <div className="mb-1 flex justify-between gap-2 text-xs text-muted-foreground">
-            <span>{comment.author_id === currentUser.id ? "You" : comment.author_id}</span>
+            <span>{comment.author_id === currentUser.id ? "Bạn" : comment.author_id}</span>
             <time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString()}</time>
           </div>
           <p className="whitespace-pre-wrap">{comment.body}</p>
           {(comment.author_id === currentUser.id || currentUser.role === "admin") && (
             <button type="button" className="mt-2 text-xs text-destructive underline" onClick={() => void onDelete(comment.id)}>
-              Delete comment
+              Xóa bình luận
             </button>
           )}
         </article>
       ))}
-      {!comments.length && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+      {!comments.length && <p className="text-sm text-muted-foreground">Chưa có bình luận.</p>}
     </div>
   )
 }
@@ -628,8 +566,8 @@ function CommentForm({
 
   return (
     <form onSubmit={(event) => void submit(event)} className="flex gap-2">
-      <Input name="body" placeholder="Write a comment" required maxLength={10_000} />
-      <Button type="submit" variant="outline">Send</Button>
+      <Input name="body" placeholder="Viết bình luận" required maxLength={10_000} />
+      <Button type="submit" variant="outline">Gửi</Button>
     </form>
   )
 }
@@ -652,5 +590,5 @@ function taskStatus(value: FormDataEntryValue | null): TaskStatus {
 }
 
 function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "Request failed"
+  return cause instanceof Error ? cause.message : "Yêu cầu thất bại"
 }

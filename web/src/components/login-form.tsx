@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react"
 import { cn } from "cn"
+import { ArrowRight, LockKeyhole } from "lucide-react"
 
-import { api, clearAccessToken, setAccessToken, type User } from "@/api"
+import { api, type User } from "@/api"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -34,15 +35,13 @@ export function LoginForm({
     setSubmitting(true)
     const form = new FormData(event.currentTarget)
     try {
-      const result = await api.login(
+      await api.login(
         String(form.get("email")),
         String(form.get("password")),
       )
-      setAccessToken(result.access_token)
       onAuthenticated(await api.currentUser())
     } catch (cause) {
-      clearAccessToken()
-      setError(cause instanceof Error ? cause.message : "Login failed")
+      setError(cause instanceof Error ? cause.message : "Đăng nhập thất bại")
     } finally {
       setSubmitting(false)
     }
@@ -52,9 +51,12 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Log in</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <LockKeyhole className="size-4 text-muted-foreground" />
+            Đăng nhập
+          </CardTitle>
           <CardDescription>
-            Use your Open Project account to continue.
+            Sử dụng tài khoản Open Project để tiếp tục.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -71,7 +73,7 @@ export function LoginForm({
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
                 <Input
                   id="password"
                   name="password"
@@ -87,10 +89,11 @@ export function LoginForm({
                   </p>
                 )}
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? "Logging in..." : "Log in"}
+                  {!submitting && <ArrowRight />}
+                  {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
                 </Button>
                 <FieldDescription>
-                  Your session ends when you close this tab.
+                  Phiên đăng nhập được bảo vệ bằng cookie an toàn.
                 </FieldDescription>
               </Field>
             </FieldGroup>

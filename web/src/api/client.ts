@@ -2,7 +2,6 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"
 ).replace(/\/+$/, "")
 
-const TOKEN_KEY = "open-project-access-token"
 export const AUTH_EXPIRED_EVENT = "open-project:auth-expired"
 
 export class ApiError extends Error {
@@ -12,22 +11,6 @@ export class ApiError extends Error {
   ) {
     super(message)
     this.name = "ApiError"
-  }
-}
-
-export function getAccessToken(): string | null {
-  return typeof window === "undefined"
-    ? null
-    : window.sessionStorage.getItem(TOKEN_KEY)
-}
-
-export function setAccessToken(token: string): void {
-  window.sessionStorage.setItem(TOKEN_KEY, token)
-}
-
-export function clearAccessToken(): void {
-  if (typeof window !== "undefined") {
-    window.sessionStorage.removeItem(TOKEN_KEY)
   }
 }
 
@@ -47,27 +30,30 @@ function errorMessage(payload: unknown, status: number): string {
       if (messages.length) return messages.join(", ")
     }
   }
-  return `Request failed (${status})`
+  return `Yêu cầu thất bại (${status})`
 }
 
 export async function request<T>(
   path: string,
   init: RequestInit = {},
   authenticated = true,
+  retry = true,
 ): Promise<T> {
   const headers = new Headers(init.headers)
-  const token = authenticated ? getAccessToken() : null
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
   }
-  if (token) headers.set("Authorization", `Bearer ${token}`)
 
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers,
+      credentials: "include",
+    })
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new ApiError("Cannot connect to the API. Check the API URL.", 0)
+      throw new ApiError("Không thể kết nối API. Hãy kiểm tra địa chỉ API.", 0)
     }
     throw error
   }
@@ -80,9 +66,20 @@ export async function request<T>(
     } catch {
       payload = text
     }
-    if (response.status === 401 && token) {
-      clearAccessToken()
-      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+    if (
+      response.status === 401 &&
+      authenticated &&
+      retry &&
+      path !== "/auth/refresh" &&
+      path !== "/auth/login" &&
+      path !== "/auth/logout"
+    ) {
+      try {
+        await request("/auth/refresh", { method: "POST" }, false)
+        return request<T>(path, init, true, false)
+      } catch {
+        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+      }
     }
     throw new ApiError(errorMessage(payload, response.status), response.status)
   }

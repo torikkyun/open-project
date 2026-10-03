@@ -35,6 +35,10 @@ def hash_device_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 

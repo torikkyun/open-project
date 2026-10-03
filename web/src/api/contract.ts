@@ -17,11 +17,6 @@ export interface UserCreate {
   password: string
 }
 
-export interface LoginResponse {
-  access_token: string
-  token_type: "bearer"
-}
-
 export interface Project {
   id: UUID
   name: string

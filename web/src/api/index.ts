@@ -1,7 +1,6 @@
 import type {
   Comment,
   CommentCreate,
-  LoginResponse,
   Project,
   ProjectCreate,
   ProjectUpdate,
@@ -22,11 +21,13 @@ const jsonBody = (method: string, body?: unknown): RequestInit => ({
 
 export const api = {
   login: (email: string, password: string) =>
-    request<LoginResponse>(
+    request<void>(
       "/auth/login",
       jsonBody("POST", { email, password }),
       false,
     ),
+  refresh: () => request<void>("/auth/refresh", { method: "POST" }, false),
+  logout: () => request<void>("/auth/logout", { method: "POST" }, false),
   currentUser: () => request<User>("/users/me"),
   listUsers: () => request<User[]>("/users"),
   createUser: (body: UserCreate) =>
@@ -95,9 +96,4 @@ export const api = {
 }
 
 export type * from "./contract"
-export {
-  ApiError,
-  clearAccessToken,
-  getAccessToken,
-  setAccessToken,
-} from "./client"
+export { ApiError } from "./client"
