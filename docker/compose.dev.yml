@@ -21,6 +21,58 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      db-dev-network:
+        aliases:
+          - db-dev
+
+  db-client-dev:
+    image: t8y2/dbx:latest
+    container_name: open-project-db-client-dev
+    pull_policy: always
+    restart: always
+    ports:
+      - "4224:4224"
+    volumes:
+      - db-client-dev-data:/app/data
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    networks:
+      - db-dev-network
+
+  api-dev:
+    container_name: open-project-api-dev
+    build:
+      context: ../api
+      dockerfile: dockerfile
+    env_file:
+      - ../.env
+    ports:
+      - "8000:80"
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    command:
+      [
+        "/opt/venv/bin/fastapi",
+        "dev",
+        "/app/src/main.py",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "80",
+        "--reload",
+      ]
+    volumes:
+      - ../api/src:/app/src
+      - ../api/alembic:/app/alembic
+    networks:
+      - db-dev-network
 
 volumes:
   db-dev-data:
+  db-client-dev-data:
+
+networks:
+  db-dev-network:
