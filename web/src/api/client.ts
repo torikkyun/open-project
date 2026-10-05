@@ -2,6 +2,10 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1"
 ).replace(/\/+$/, "")
 
+export function assetUrl(path: string): string {
+  return path.startsWith("http") ? path : `${API_BASE_URL.replace(/\/api\/v1$/, "")}${path}`
+}
+
 export const AUTH_EXPIRED_EVENT = "open-project:auth-expired"
 
 export class ApiError extends Error {
@@ -40,7 +44,11 @@ export async function request<T>(
   retry = true,
 ): Promise<T> {
   const headers = new Headers(init.headers)
-  if (init.body && !headers.has("Content-Type")) {
+  if (
+    init.body &&
+    !(init.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json")
   }
 

@@ -30,6 +30,7 @@ class UserRead(BaseModel):
     id: UUID
     email: EmailStr
     full_name: str
+    avatar_url: str | None
     role: Literal["admin", "employee"]
     is_active: bool
     created_at: datetime

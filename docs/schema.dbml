@@ -1,6 +1,6 @@
 Project open_project {
   database_type: 'PostgreSQL'
-  Note: 'Core schema for users, projects, tasks, and task comments.'
+  Note: 'Core schema for users, projects, tasks, task comments, and refresh sessions.'
 }
 
 Table users {
@@ -69,6 +69,20 @@ Table task_comments {
   }
 }
 
+Table refresh_sessions {
+  id uuid [pk]
+  user_id uuid [not null]
+  token_hash varchar(64) [not null, unique]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
+  created_at timestamptz [not null]
+
+  indexes {
+    user_id [name: 'ix_refresh_sessions_user_id']
+    token_hash [name: 'ix_refresh_sessions_token_hash']
+  }
+}
+
 Ref: projects.owner_id > users.id [delete: restrict]
 Ref: project_members.project_id > projects.id [delete: cascade]
 Ref: project_members.user_id > users.id [delete: cascade]
@@ -77,3 +91,4 @@ Ref: tasks.assignee_id > users.id [delete: set null]
 Ref: tasks.created_by > users.id [delete: restrict]
 Ref: task_comments.task_id > tasks.id [delete: cascade]
 Ref: task_comments.author_id > users.id [delete: restrict]
+Ref: refresh_sessions.user_id > users.id [delete: cascade]

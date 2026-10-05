@@ -1,17 +1,17 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { LoginForm } from "@/components/login-form"
-import type { User } from "@/api"
+import { LoginForm } from "@/components/login-form";
+import type { User } from "@/api";
 
 export const Route = createFileRoute("/_auth/login/")({
   component: LoginPage,
-})
+});
 
 function LoginPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   function handleAuthenticated(_user: User) {
-    void navigate({ to: "/" })
+    void navigate({ to: "/" });
   }
 
   return (
@@ -31,7 +31,8 @@ function LoginPage() {
             Lập kế hoạch. Đồng bộ đội ngũ. Hoàn thành công việc tự tin.
           </h1>
           <p className="text-primary-foreground/70">
-            Quản lý dự án, công việc và cập nhật đội ngũ trong một không gian tập trung.
+            Quản lý dự án, công việc và cập nhật đội ngũ trong một không gian
+            tập trung.
           </p>
         </div>
         <p className="text-sm text-primary-foreground/50">
@@ -50,5 +51,5 @@ function LoginPage() {
         </div>
       </section>
     </main>
-  )
+  );
 }

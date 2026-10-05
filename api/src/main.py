@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from src.api.v1.router import router as v1_router
 from src.infra.settings import settings
@@ -14,6 +17,10 @@ app = FastAPI(
         "withCredentials": True,
     },
 )
+
+media_directory = Path(settings.upload_dir or "media")
+media_directory.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=media_directory), name="media")
 
 
 @app.middleware("http")

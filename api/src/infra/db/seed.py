@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from src.infra.security import hash_password
 from src.infra.settings import settings
 from src.modules.users.models import User
+from src.modules.users.router import default_avatar_url
 from src.modules.users.schema import UserCreate
 
 logger = logging.getLogger("seed")
@@ -39,6 +40,7 @@ async def create_admin(email: str, full_name: str, password: str) -> None:
                     email=admin_input.email,
                     full_name=admin_input.full_name,
                     password_hash=hash_password(admin_input.password),
+                    avatar_url=default_avatar_url(admin_input.email),
                     role="admin",
                 )
             )

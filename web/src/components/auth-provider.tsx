@@ -3,12 +3,14 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, type User } from "@/api"
 import { AUTH_EXPIRED_EVENT } from "@/api/client"
+
+const currentUserQueryKey = ["auth", "currentUser"]
 
 type AuthContextValue = {
   user: User | null
@@ -20,42 +22,37 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const currentUserQuery = useQuery<User | null>({
+    queryKey: currentUserQueryKey,
+    queryFn: () => api.currentUser(),
+    enabled: typeof window !== "undefined",
+    retry: false,
+    staleTime: Infinity,
+  })
+  const user = currentUserQuery.data ?? null
 
   useEffect(() => {
-    let active = true
-    api
-      .currentUser()
-      .then((currentUser) => {
-        if (active) setUser(currentUser)
-      })
-      .catch(() => {
-        if (active) setUser(null)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-
-    const expireSession = () => setUser(null)
+    const expireSession = () =>
+      queryClient.setQueryData<User | null>(currentUserQueryKey, null)
     window.addEventListener(AUTH_EXPIRED_EVENT, expireSession)
     return () => {
-      active = false
       window.removeEventListener(AUTH_EXPIRED_EVENT, expireSession)
     }
-  }, [])
+  }, [queryClient])
 
   const value = useMemo(
     () => ({
       user,
-      loading,
-      login: setUser,
+      loading: currentUserQuery.isPending,
+      login: (nextUser: User) =>
+        queryClient.setQueryData<User | null>(currentUserQueryKey, nextUser),
       logout: () => {
         void api.logout()
-        setUser(null)
+        queryClient.setQueryData<User | null>(currentUserQueryKey, null)
       },
     }),
-    [loading, user],
+    [currentUserQuery.isPending, queryClient, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

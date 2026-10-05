@@ -29,6 +29,13 @@ export const api = {
   refresh: () => request<void>("/auth/refresh", { method: "POST" }, false),
   logout: () => request<void>("/auth/logout", { method: "POST" }, false),
   currentUser: () => request<User>("/users/me"),
+  updateProfile: (fullName?: string, file?: File) => {
+    const body = new FormData()
+    if (fullName !== undefined) body.append("full_name", fullName)
+    if (file) body.append("avatar", file)
+    return request<User>("/users/me", { method: "PATCH", body })
+  },
+  updateAvatar: (file: File) => api.updateProfile(undefined, file),
   listUsers: () => request<User[]>("/users"),
   createUser: (body: UserCreate) =>
     request<User>("/users", jsonBody("POST", body)),
@@ -97,3 +104,4 @@ export const api = {
 
 export type * from "./contract"
 export { ApiError } from "./client"
+export { assetUrl } from "./client"

@@ -1,10 +1,34 @@
-import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import {
+  Outlet,
+  createFileRoute,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AppLayoutProvider } from "@/components/app-layout-context";
-import { useAppLayout } from "@/components/app-layout-context";
+import { api, assetUrl, type Project, type User } from "@/api";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -19,8 +43,18 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
-import { FolderKanban, LayoutDashboard, LogOut, Users } from "lucide-react";
+import {
+  Bell,
+  ChevronsUpDown,
+  FolderKanban,
+  LogOut,
+  Plus,
+  Settings,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -29,17 +63,147 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   return (
     <AuthProvider>
-      <AppLayoutProvider>
-        <ProtectedApp />
-      </AppLayoutProvider>
+      <ProtectedApp />
     </AuthProvider>
+  );
+}
+
+function AccountMenu({
+  user,
+  logout,
+  onAccountClick,
+  onAvatarUpload,
+  avatarUploading,
+}: {
+  user: User;
+  logout: () => void;
+  onAccountClick: () => void;
+  onAvatarUpload: (file: File) => void;
+  avatarUploading: boolean;
+}) {
+  const { isMobile } = useSidebar();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <>
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onAvatarUpload(file);
+          event.target.value = "";
+        }}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Tài khoản"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            />
+          }
+        >
+          <Avatar size="sm">
+            {user.avatar_url && (
+              <AvatarImage src={assetUrl(user.avatar_url)} alt="" />
+            )}
+            <AvatarFallback>
+              {user.full_name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="grid flex-1 text-left text-sm leading-tight">
+            <span className="truncate font-medium">{user.full_name}</span>
+            <span className="truncate text-xs">{user.email}</span>
+          </span>
+          <ChevronsUpDown className="ml-auto size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side={isMobile ? "top" : "right"}
+          align="start"
+          className="w-56"
+        >
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex items-center gap-2">
+                <Avatar size="sm">
+                  {user.avatar_url && (
+                    <AvatarImage src={assetUrl(user.avatar_url)} alt="" />
+                  )}
+                  <AvatarFallback>
+                    {user.full_name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid text-left text-sm">
+                  <span className="truncate font-medium">{user.full_name}</span>
+                  <span className="truncate text-xs">{user.email}</span>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarUploading}
+          >
+            <Settings />
+            Đổi ảnh đại diện
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onAccountClick}>
+            <UserRound />
+            Tài khoản
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Bell />
+            Thông báo
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={logout}>
+            <LogOut />
+            Đăng xuất
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }
 
 function ProtectedApp() {
   const { loading, user, logout } = useAuth();
-  const { projects, selectedProjectId, setSelectedProjectId } = useAppLayout();
   const navigate = useNavigate();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const queryClient = useQueryClient();
+  const projectsQuery = useQuery({
+    queryKey: ["projects"],
+    queryFn: api.listProjects,
+    enabled: !!user,
+  });
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const avatarMutation = useMutation({
+    mutationFn: api.updateAvatar,
+    onSuccess: (nextUser) => {
+      queryClient.setQueryData(["auth", "currentUser"], nextUser);
+    },
+  });
+  const createProjectMutation = useMutation({
+    mutationFn: api.createProject,
+    onSuccess: (project) => {
+      queryClient.setQueryData<Project[]>(["projects"], (projects) => [
+        project,
+        ...(projects ?? []),
+      ]);
+      setCreateProjectOpen(false);
+      void navigate({
+        to: "/projects/$projectId",
+        params: { projectId: project.id },
+      });
+    },
+  });
 
   useEffect(() => {
     if (!loading && !user) void navigate({ to: "/login", replace: true });
@@ -53,15 +217,19 @@ function ProtectedApp() {
     );
   }
 
+  const projects = projectsQuery.data ?? [];
+
   return (
     <SidebarProvider>
-      <Sidebar variant="sidebar">
-        <SidebarHeader className="h-[60px] shrink-0 border-b">
-          <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+      <Sidebar variant="floating" collapsible="icon">
+        <SidebarHeader className="h-[51px] shrink-0 border-b p-0">
+          <div className="flex h-full items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
               OP
             </div>
-            <span className="font-semibold">Open Project</span>
+            <span className="truncate font-semibold group-data-[collapsible=icon]:hidden">
+              Open Project
+            </span>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -70,82 +238,180 @@ function ProtectedApp() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive>
-                    <LayoutDashboard />
-                    Tổng quan
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton>
+                  <SidebarMenuButton
+                    isActive={pathname === "/"}
+                    tooltip="Tổng quan"
+                    onClick={() => void navigate({ to: "/" })}
+                  >
                     <FolderKanban />
-                    Dự án
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton>
-                    <Users />
-                    Đội ngũ
+                    Tổng quan
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          {user.role === "admin" && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Quản trị</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      tooltip="Quản lý tài khoản"
+                      isActive={pathname === "/admin/users"}
+                      onClick={() => void navigate({ to: "/admin/users" })}
+                    >
+                      <Users />
+                      Quản lý tài khoản
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
           <SidebarGroup>
             <SidebarGroupLabel>Dự án</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="Tạo dự án"
+                    onClick={() => setCreateProjectOpen(true)}
+                  >
+                    <Plus />
+                    Tạo dự án
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 {projects.map((project) => (
                   <SidebarMenuItem key={project.id}>
                     <SidebarMenuButton
-                      isActive={project.id === selectedProjectId}
-                      onClick={() => setSelectedProjectId(project.id)}
+                      tooltip={project.name}
+                      isActive={pathname === `/projects/${project.id}`}
+                      onClick={() =>
+                        void navigate({
+                          to: "/projects/$projectId",
+                          params: { projectId: project.id },
+                        })
+                      }
                     >
                       <FolderKanban />
                       <span className="truncate">{project.name}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-                {!projects.length && (
+                {projectsQuery.isPending && (
                   <p className="px-2 text-xs text-muted-foreground">
-                    Chưa có dự án.
+                    Đang tải dự án...
                   </p>
                 )}
+                {projectsQuery.error && (
+                  <p role="alert" className="px-2 text-xs text-destructive">
+                    Không thể tải danh sách dự án.
+                  </p>
+                )}
+                {!projectsQuery.isPending &&
+                  !projectsQuery.error &&
+                  !projects.length && (
+                    <p className="px-2 text-xs text-muted-foreground">
+                      Chưa có dự án.
+                    </p>
+                  )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="border-t">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={logout}>
-                <LogOut />
-                Đăng xuất
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <AccountMenu
+            user={user}
+            logout={logout}
+            onAccountClick={() => void navigate({ to: "/account" })}
+            onAvatarUpload={(file) => avatarMutation.mutate(file)}
+            avatarUploading={avatarMutation.isPending}
+          />
         </SidebarFooter>
       </Sidebar>
-      {/* <SidebarInset className="md:m-0 md:rounded-none md:shadow-none"> */}
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-[60px] shrink-0 items-center gap-3 border-b bg-background px-4">
           <SidebarTrigger />
           <div className="flex-1">
-            <p className="text-sm font-semibold">Tổng quan</p>
+            <p className="text-sm font-semibold">Open Project</p>
             <p className="hidden text-xs text-muted-foreground sm:block">
               Không gian làm việc của đội ngũ
             </p>
           </div>
-          <div className="hidden text-right sm:block">
+          {/* <div className="hidden text-right sm:block">
             <p className="text-sm font-medium">{user.full_name}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <Button variant="outline" size="sm" onClick={logout}>
             <LogOut />
             <span className="hidden sm:inline">Đăng xuất</span>
-          </Button>
+          </Button> */}
         </header>
+        {projectsQuery.error && (
+          <p role="alert" className="mx-4 mt-4 text-sm text-destructive">
+            Không thể tải danh sách dự án. Hãy thử tải lại trang.
+          </p>
+        )}
         <Outlet />
       </SidebarInset>
+      <Dialog
+        open={createProjectOpen}
+        onOpenChange={(open) => {
+          setCreateProjectOpen(open);
+          if (!open) createProjectMutation.reset();
+        }}
+      >
+        <DialogContent>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const data = new FormData(event.currentTarget);
+              createProjectMutation.mutate(
+                {
+                  name: String(data.get("name")),
+                  description:
+                    String(data.get("description") ?? "").trim() || null,
+                },
+                {
+                  onSuccess: () => form.reset(),
+                },
+              );
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Tạo dự án</DialogTitle>
+              <DialogDescription>
+                Nhập tên và mô tả cho dự án mới.
+              </DialogDescription>
+            </DialogHeader>
+            <Input
+              name="name"
+              placeholder="Tên dự án"
+              required
+              maxLength={160}
+              aria-label="Tên dự án"
+            />
+            <Input
+              name="description"
+              placeholder="Mô tả (không bắt buộc)"
+              aria-label="Mô tả dự án"
+            />
+            {createProjectMutation.error && (
+              <p role="alert" className="text-sm text-destructive">
+                {createProjectMutation.error.message}
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="submit" disabled={createProjectMutation.isPending}>
+                Tạo dự án
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }

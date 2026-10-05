@@ -6,6 +6,7 @@ export interface User {
   id: UUID
   email: string
   full_name: string
+  avatar_url: string | null
   role: "admin" | "employee"
   is_active: boolean
   created_at: string
