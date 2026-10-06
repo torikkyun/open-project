@@ -101,7 +101,7 @@ function AccountMenu({
             <SidebarMenuButton
               size="lg"
               tooltip="Tài khoản"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="group-data-[collapsible=icon]:justify-center data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             />
           }
         >
@@ -113,11 +113,11 @@ function AccountMenu({
               {user.full_name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="grid flex-1 text-left text-sm leading-tight">
+          <span className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
             <span className="truncate font-medium">{user.full_name}</span>
             <span className="truncate text-xs">{user.email}</span>
           </span>
-          <ChevronsUpDown className="ml-auto size-4" />
+          <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           side={isMobile ? "top" : "right"}
@@ -318,7 +318,7 @@ function ProtectedApp() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t">
+        <SidebarFooter className="border-t group-data-[collapsible=icon]:items-center">
           <AccountMenu
             user={user}
             logout={logout}

@@ -241,6 +241,7 @@ export function ProjectTaskList({
     members: tasks.members,
     membersById: tasks.membersById,
     rowSelection,
+    allTasks: tasks.tasks,
     visibleTasks,
     children: taskGroups.children,
     titleDrafts: tasks.titleDrafts,
@@ -264,27 +265,27 @@ export function ProjectTaskList({
           id: "select",
           header: () => {
             const c = ctxRef.current;
-            const selectedCount = c.visibleTasks.filter(
+            const selectedCount = c.allTasks.filter(
               (task) => c.rowSelection[task.id],
             ).length;
             return (
               <div className="flex items-center gap-1.5">
                 <span className="size-4" />
                 <Checkbox
-                  aria-label="Chọn tất cả công việc đang hiển thị"
+                  aria-label="Chọn tất cả công việc"
                   checked={
-                    c.visibleTasks.length > 0 &&
-                    selectedCount === c.visibleTasks.length
+                    c.allTasks.length > 0 &&
+                    selectedCount === c.allTasks.length
                   }
                   indeterminate={
-                    selectedCount > 0 && selectedCount < c.visibleTasks.length
+                    selectedCount > 0 && selectedCount < c.allTasks.length
                   }
                   onCheckedChange={(checked) => {
                     c.setRowSelection((selected) => {
+                      if (!checked) return {};
                       const next = { ...selected };
-                      for (const task of c.visibleTasks) {
-                        if (checked) next[task.id] = true;
-                        else delete next[task.id];
+                      for (const task of c.allTasks) {
+                        next[task.id] = true;
                       }
                       return next;
                     });
@@ -733,7 +734,7 @@ export function ProjectTaskList({
         handleTaskDrop(source.id, source.index);
       }}
     >
-      <section className="min-w-0 max-w-full space-y-3 overflow-hidden rounded-lg border bg-background p-3">
+      <section className="flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-2 overflow-hidden rounded-lg border bg-background p-2">
         <TaskListFilters
           search={search}
           setSearch={setSearch}
@@ -752,7 +753,7 @@ export function ProjectTaskList({
           </p>
         )}
         <Table
-          containerClassName="h-[calc(100svh-20.25rem)] min-w-0 max-w-full overflow-auto"
+          containerClassName="min-h-0 min-w-0 max-w-full flex-1 overflow-auto"
           className="min-w-[900px]"
         >
           <TableHeader>

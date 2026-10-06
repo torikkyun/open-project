@@ -65,6 +65,7 @@ services:
     volumes:
       - ../api/src:/app/src
       - ../api/alembic:/app/alembic
+      - ../api/media:/app/media
     networks:
       - db-dev-network
       - api-dev-network

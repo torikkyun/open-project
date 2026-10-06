@@ -61,8 +61,8 @@ function ProjectPage() {
   }
 
   return (
-    <main className="min-h-[calc(100svh-3.75rem)] space-y-5 bg-muted/30 p-4 sm:p-6">
-      <div>
+    <main className="flex h-[calc(100svh-3.75rem)] min-h-0 flex-col gap-2 overflow-hidden bg-muted/30 sm:p-2 sm:pb-0 md:h-[calc(100svh-4.25rem)]">
+      <div className="shrink-0">
         <h1 className="text-xl font-semibold">{project.name}</h1>
         {project.description && (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -70,8 +70,8 @@ function ProjectPage() {
           </p>
         )}
       </div>
-      <Tabs defaultValue="summary">
-        <TabsList variant="default">
+      <Tabs defaultValue="summary" className="min-h-0 min-w-0 flex-1">
+        <TabsList variant="default" className="shrink-0">
           {projectTabs.map(({ value, label, icon: Icon }) => (
             <TabsTrigger key={value} value={value}>
               <Icon aria-hidden="true" />
@@ -80,7 +80,11 @@ function ProjectPage() {
           ))}
         </TabsList>
         {projectTabs.map(({ value }) => (
-          <TabsContent key={value} value={value} className="min-w-0">
+          <TabsContent
+            key={value}
+            value={value}
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+          >
             {value === "list" && (
               <ProjectTaskList
                 projectId={project.id}

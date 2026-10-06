@@ -52,3 +52,4 @@ vite.config.ts.timestamp-*
 .tanstack-start/
 .tanstack/
 .nitro/
+media/

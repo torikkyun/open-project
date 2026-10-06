@@ -28,6 +28,7 @@ export type TaskListContext = {
   members: User[];
   membersById: Map<UUID, User>;
   rowSelection: Record<string, true>;
+  allTasks: Task[];
   visibleTasks: Task[];
   children: Map<UUID, Task[]>;
   titleDrafts: Record<UUID, string>;
