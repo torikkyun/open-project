@@ -62,6 +62,11 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
       );
       return { previousTasks };
     },
+    onSuccess: (updatedTask) => {
+      queryClient.setQueryData<Task[]>(taskQueryKey(projectId), (tasks) =>
+        tasks?.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
+      );
+    },
     onError: (_error, _variables, context) => {
       if (context?.previousTasks) {
         queryClient.setQueryData(
@@ -70,8 +75,6 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
         );
       }
     },
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: taskQueryKey(projectId) }),
   });
 
   const tasks = tasksQuery.data ?? [];
