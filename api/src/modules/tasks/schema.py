@@ -5,14 +5,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TaskStatus = Literal["todo", "in_progress", "done"]
+TaskPriority = Literal["none", "low", "medium", "high", "highest"]
 
 
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = None
     status: TaskStatus = "todo"
+    priority: TaskPriority = "none"
+    start_at: datetime | None = None
     due_at: datetime | None = None
     assignee_id: UUID | None = None
+    reporter_id: UUID | None = None
+    parent_task_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -27,8 +32,11 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     status: TaskStatus | None = None
+    priority: TaskPriority | None = None
+    start_at: datetime | None = None
     due_at: datetime | None = None
     assignee_id: UUID | None = None
+    reporter_id: UUID | None = None
 
     @field_validator("title")
     @classmethod
@@ -46,14 +54,32 @@ class TaskRead(BaseModel):
 
     id: UUID
     project_id: UUID
+    parent_task_id: UUID | None
+    task_number: int
     title: str
     description: str | None
     status: TaskStatus
+    priority: TaskPriority
+    start_at: datetime | None
     due_at: datetime | None
     assignee_id: UUID | None
+    reporter_id: UUID
+    position: float
     created_by: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class TaskReorder(BaseModel):
+    parent_task_id: UUID | None = None
+    task_ids: list[UUID] = Field(min_length=1)
+
+    @field_validator("task_ids")
+    @classmethod
+    def unique_task_ids(cls, value: list[UUID]) -> list[UUID]:
+        if len(value) != len(set(value)):
+            raise ValueError("Danh sách công việc có mã trùng lặp")
+        return value
 
 
 class CommentCreate(BaseModel):

@@ -4,9 +4,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
+    Integer,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,8 +20,11 @@ from src.infra.db.base import Base
 class Task(Base):
     __tablename__ = "tasks"
     __table_args__ = (
+        UniqueConstraint("project_id", "task_number"),
+        CheckConstraint("status IN ('todo', 'in_progress', 'done')", name="ck_tasks_status"),
         CheckConstraint(
-            "status IN ('todo', 'in_progress', 'done')", name="ck_tasks_status"
+            "priority IN ('none', 'low', 'medium', 'high', 'highest')",
+            name="ck_tasks_priority",
         ),
     )
 
@@ -26,9 +32,20 @@ class Task(Base):
     project_id: Mapped[UUID] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
+    parent_task_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    task_number: Mapped[int] = mapped_column(Integer)
+    start_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="todo")
+    priority: Mapped[str] = mapped_column(
+        String(20), default="none", server_default="none"
+    )
+    position: Mapped[float] = mapped_column(Float, default=0, server_default="0")
     due_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -36,6 +53,9 @@ class Task(Base):
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     created_by: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    reporter_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT")
     )
     created_at: Mapped[datetime] = mapped_column(

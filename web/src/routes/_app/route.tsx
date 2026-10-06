@@ -51,7 +51,6 @@ import {
   FolderKanban,
   LogOut,
   Plus,
-  Settings,
   UserRound,
   Users,
 } from "lucide-react";
@@ -73,7 +72,6 @@ function AccountMenu({
   logout,
   onAccountClick,
   onAvatarUpload,
-  avatarUploading,
 }: {
   user: User;
   logout: () => void;
@@ -145,13 +143,13 @@ function AccountMenu({
             </DropdownMenuLabel>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             onClick={() => avatarInputRef.current?.click()}
             disabled={avatarUploading}
           >
             <Settings />
             Đổi ảnh đại diện
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           <DropdownMenuItem onClick={onAccountClick}>
             <UserRound />
             Tài khoản
@@ -372,6 +370,7 @@ function ProtectedApp() {
               createProjectMutation.mutate(
                 {
                   name: String(data.get("name")),
+                  project_key: String(data.get("project_key")).trim(),
                   description:
                     String(data.get("description") ?? "").trim() || null,
                 },
@@ -384,7 +383,7 @@ function ProtectedApp() {
             <DialogHeader>
               <DialogTitle>Tạo dự án</DialogTitle>
               <DialogDescription>
-                Nhập tên và mô tả cho dự án mới.
+                Nhập tên, mã và mô tả cho dự án mới.
               </DialogDescription>
             </DialogHeader>
             <Input
@@ -393,6 +392,15 @@ function ProtectedApp() {
               required
               maxLength={160}
               aria-label="Tên dự án"
+            />
+            <Input
+              name="project_key"
+              placeholder="Mã dự án (ví dụ: SAM)"
+              required
+              minLength={2}
+              maxLength={10}
+              pattern="[A-Za-z][A-Za-z0-9]*"
+              aria-label="Mã dự án"
             />
             <Input
               name="description"

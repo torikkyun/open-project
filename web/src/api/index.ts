@@ -6,34 +6,61 @@ import type {
   ProjectUpdate,
   Task,
   TaskCreate,
+  TaskReorder,
   TaskStatus,
   TaskUpdate,
   User,
   UserCreate,
   UUID,
-} from "./contract"
-import { request } from "./client"
+} from "./contract";
+import { request } from "./client";
 
 const jsonBody = (method: string, body?: unknown): RequestInit => ({
   method,
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-})
+});
+
+const listTasks = (
+  projectId: UUID,
+  options: {
+    status?: TaskStatus;
+    assigneeId?: UUID;
+    offset?: number;
+    limit?: number;
+  } = {},
+) => {
+  const query = new URLSearchParams({
+    offset: String(options.offset ?? 0),
+    limit: String(options.limit ?? 100),
+  });
+  if (options.status) query.set("status", options.status);
+  if (options.assigneeId) query.set("assignee_id", options.assigneeId);
+  return request<Task[]>(
+    `/projects/${encodeURIComponent(projectId)}/tasks?${query.toString()}`,
+  );
+};
+
+const listAllTasks = async (projectId: UUID): Promise<Task[]> => {
+  const tasks: Task[] = [];
+  const limit = 100;
+  for (let offset = 0; ; offset += limit) {
+    const page = await listTasks(projectId, { offset, limit });
+    tasks.push(...page);
+    if (page.length < limit) return tasks;
+  }
+};
 
 export const api = {
   login: (email: string, password: string) =>
-    request<void>(
-      "/auth/login",
-      jsonBody("POST", { email, password }),
-      false,
-    ),
+    request<void>("/auth/login", jsonBody("POST", { email, password }), false),
   refresh: () => request<void>("/auth/refresh", { method: "POST" }, false),
   logout: () => request<void>("/auth/logout", { method: "POST" }, false),
   currentUser: () => request<User>("/users/me"),
   updateProfile: (fullName?: string, file?: File) => {
-    const body = new FormData()
-    if (fullName !== undefined) body.append("full_name", fullName)
-    if (file) body.append("avatar", file)
-    return request<User>("/users/me", { method: "PATCH", body })
+    const body = new FormData();
+    if (fullName !== undefined) body.append("full_name", fullName);
+    if (file) body.append("avatar", file);
+    return request<User>("/users/me", { method: "PATCH", body });
   },
   updateAvatar: (file: File) => api.updateProfile(undefined, file),
   listUsers: () => request<User[]>("/users"),
@@ -65,12 +92,13 @@ export const api = {
       { method: "DELETE" },
     ),
 
-  listTasks: (projectId: UUID, status?: TaskStatus) => {
-    const query = status ? `?status=${encodeURIComponent(status)}` : ""
-    return request<Task[]>(
-      `/projects/${encodeURIComponent(projectId)}/tasks${query}`,
-    )
-  },
+  listTasks,
+  listAllTasks,
+  reorderTasks: (projectId: UUID, body: TaskReorder) =>
+    request<void>(
+      `/projects/${encodeURIComponent(projectId)}/tasks/reorder`,
+      jsonBody("POST", body),
+    ),
   createTask: (projectId: UUID, body: TaskCreate) =>
     request<Task>(
       `/projects/${encodeURIComponent(projectId)}/tasks`,
@@ -100,8 +128,8 @@ export const api = {
       `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
       { method: "DELETE" },
     ),
-}
+};
 
-export type * from "./contract"
-export { ApiError } from "./client"
-export { assetUrl } from "./client"
+export type * from "./contract";
+export { ApiError } from "./client";
+export { assetUrl } from "./client";

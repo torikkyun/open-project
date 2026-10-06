@@ -6,7 +6,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
+    project_key: str = Field(min_length=2, max_length=10, pattern=r"^[A-Za-z][A-Za-z0-9]*$")
     description: str | None = None
+
+    @field_validator("project_key")
+    @classmethod
+    def normalize_project_key(cls, value: str) -> str:
+        return value.upper()
 
     @field_validator("name")
     @classmethod
@@ -37,6 +43,7 @@ class ProjectRead(BaseModel):
 
     id: UUID
     name: str
+    project_key: str
     description: str | None
     owner_id: UUID
     created_at: datetime

@@ -1,7 +1,15 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.infra.db.base import Base
@@ -9,8 +17,13 @@ from src.infra.db.base import Base
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (UniqueConstraint("project_key"),)
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_key: Mapped[str] = mapped_column(String(10))
+    next_task_number: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0"
+    )
     name: Mapped[str] = mapped_column(String(160))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))

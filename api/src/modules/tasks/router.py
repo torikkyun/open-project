@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.session import get_session
 from src.modules.auth.dependencies import get_current_user
+from src.modules.projects.models import Project
 from src.modules.projects.service import require_project_member, require_project_user
 from src.modules.tasks.models import Comment, Task
 from src.modules.tasks.schema import (
@@ -13,6 +14,7 @@ from src.modules.tasks.schema import (
     CommentRead,
     TaskCreate,
     TaskRead,
+    TaskReorder,
     TaskStatus,
     TaskUpdate,
 )
@@ -38,7 +40,9 @@ async def list_tasks(
     if assignee_id is not None:
         query = query.where(Task.assignee_id == assignee_id)
     result = await session.scalars(
-        query.order_by(Task.created_at.desc()).offset(offset).limit(limit)
+        query.order_by(Task.parent_task_id, Task.position, Task.created_at)
+        .offset(offset)
+        .limit(limit)
     )
     return list(result)
 
@@ -55,14 +59,45 @@ async def create_task(
     user: User = Depends(get_current_user),
 ) -> Task:
     await require_project_member(session, project_id, user)
+    if body.parent_task_id is not None:
+        parent_task = await session.scalar(
+            select(Task).where(
+                Task.id == body.parent_task_id,
+                Task.project_id == project_id,
+            )
+        )
+        if parent_task is None:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "Không tìm thấy công việc cha"
+            )
+        if parent_task.parent_task_id is not None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Subtask không thể có subtask con",
+            )
     if body.assignee_id is not None:
         await require_project_user(session, project_id, body.assignee_id)
+    reporter_id = body.reporter_id or user.id
+    await require_project_user(session, project_id, reporter_id)
+    project = await session.scalar(
+        select(Project).where(Project.id == project_id).with_for_update()
+    )
+    if project is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dự án không tồn tại")
+    project.next_task_number += 1
+    await session.flush()
     task = Task(
         project_id=project_id,
+        parent_task_id=body.parent_task_id,
+        task_number=project.next_task_number,
+        position=float(project.next_task_number),
         created_by=user.id,
+        reporter_id=reporter_id,
         title=body.title.strip(),
         description=body.description,
         status=body.status,
+        priority=body.priority,
+        start_at=body.start_at,
         due_at=body.due_at,
         assignee_id=body.assignee_id,
     )
@@ -70,6 +105,38 @@ async def create_task(
     await session.commit()
     await session.refresh(task)
     return task
+
+
+@router.post(
+    "/projects/{project_id}/tasks/reorder",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def reorder_tasks(
+    project_id: UUID,
+    body: TaskReorder,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> None:
+    await require_project_member(session, project_id, user)
+    if body.parent_task_id is not None:
+        await get_task(session, project_id, body.parent_task_id)
+    siblings = list(
+        await session.scalars(
+            select(Task).where(
+                Task.project_id == project_id,
+                Task.parent_task_id == body.parent_task_id,
+            )
+        )
+    )
+    if {task.id for task in siblings} != set(body.task_ids):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Danh sách phải chứa toàn bộ công việc cùng cấp của dự án",
+        )
+    siblings_by_id = {task.id: task for task in siblings}
+    for position, task_id in enumerate(body.task_ids):
+        siblings_by_id[task_id].position = float(position)
+    await session.commit()
 
 
 async def get_task(session: AsyncSession, project_id: UUID, task_id: UUID) -> Task:
@@ -113,8 +180,18 @@ async def update_task(
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Trạng thái không được là null"
         )
+    if "priority" in changes and changes["priority"] is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Mức độ ưu tiên không được là null"
+        )
+    if "reporter_id" in changes and changes["reporter_id"] is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Người báo cáo không được là null"
+        )
     if changes.get("assignee_id") is not None:
         await require_project_user(session, project_id, changes["assignee_id"])
+    if changes.get("reporter_id") is not None:
+        await require_project_user(session, project_id, changes["reporter_id"])
     for key, value in changes.items():
         setattr(task, key, value)
     await session.commit()

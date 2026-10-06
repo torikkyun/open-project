@@ -44,8 +44,16 @@ async def create_project(
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> Project:
+    project_key = body.project_key.upper()
+    if await session.scalar(
+        select(Project.id).where(Project.project_key == project_key)
+    ):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Mã dự án đã được sử dụng")
     project = Project(
-        name=body.name.strip(), description=body.description, owner_id=user.id
+        name=body.name.strip(),
+        project_key=project_key,
+        description=body.description,
+        owner_id=user.id,
     )
     session.add(project)
     await session.flush()

@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 
 import { api } from "@/api";
+import { ProjectTaskList } from "@/components/project-task-list";
+import { ProjectTaskBoard } from "@/components/project-task-views";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
@@ -78,7 +80,15 @@ function ProjectPage() {
           ))}
         </TabsList>
         {projectTabs.map(({ value }) => (
-          <TabsContent key={value} value={value} />
+          <TabsContent key={value} value={value} className="min-w-0">
+            {value === "list" && (
+              <ProjectTaskList
+                projectId={project.id}
+                projectKey={project.project_key}
+              />
+            )}
+            {value === "board" && <ProjectTaskBoard projectId={project.id} />}
+          </TabsContent>
         ))}
       </Tabs>
     </main>
