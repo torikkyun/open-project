@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, type Task, type TaskCreate, type TaskUpdate, type UUID } from "@/api";
 import { taskQueryKey } from "../../constants/task";
 import { useProjectTaskData } from "../../hooks/use-project-task-data";
@@ -13,8 +13,10 @@ export function useProjectTasks(projectId: UUID) {
   const [newTask, setNewTask] = useState<TaskDraft | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateTitle, setQuickCreateTitle] = useState("");
-  const [titleDrafts, setTitleDrafts] = useState<Record<UUID, string>>({});
-
+  const memberItems = useMemo(
+    () => ["", ...taskData.members.map((member) => member.id)],
+    [taskData.members],
+  );
 
   const updateMutation = useMutation({
     mutationFn: ({ taskId, changes }: { taskId: UUID; changes: TaskUpdate }) =>
@@ -55,18 +57,10 @@ export function useProjectTasks(projectId: UUID) {
         }),
       );
     },
-    onSuccess: (updatedTask, { taskId, changes }) => {
+    onSuccess: (updatedTask) => {
       queryClient.setQueryData<Task[]>(taskQueryKey(projectId), (tasks) =>
         tasks?.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
       );
-      if (changes.title !== undefined) {
-        setTitleDrafts((drafts) => {
-          if (drafts[taskId]?.trim() !== changes.title?.trim()) return drafts;
-          const next = { ...drafts };
-          delete next[taskId];
-          return next;
-        });
-      }
     },
   });
 
@@ -188,8 +182,7 @@ export function useProjectTasks(projectId: UUID) {
     setQuickCreateOpen,
     quickCreateTitle,
     setQuickCreateTitle,
-    titleDrafts,
-    setTitleDrafts,
+    memberItems,
     updateTask,
     submitNewTask,
     submitQuickTask,

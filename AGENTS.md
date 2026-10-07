@@ -1,15 +1,87 @@
-# Lưu ý dự án
+# Hướng dẫn dự án
 
-- Trang tài khoản dùng route `/account`, cập nhật `full_name` và avatar; email chỉ đọc.
-- `PATCH /users/me` dùng multipart. Avatar mới phải giới hạn loại file và 5 MB.
-- Chỉ xóa avatar cũ khi URL trỏ tới file local dưới `/media/avatars/`; không xóa URL bên ngoài.
-- Không thêm dependency nếu helper hoặc component hiện có đã đủ.
-- Sau thay đổi route, chạy `pnpm build` trong `web` để regenerate `src/routeTree.gen.ts`.
-- Validation API:
-  - `cd api`
-  - `uv run alembic upgrade head`
-  - `uv run ruff check src alembic`
-- Validation frontend:
-  - `cd web`
-  - `pnpm build`
-- Auth flow cần giữ: cookie HttpOnly, refresh khi reload/401, revoke khi logout hoặc reuse refresh cookie, CSRF cho request mutate cross-origin.
+Chuẩn giao diện nằm trong [`DESIGN.md`](./DESIGN.md). Kiến trúc nằm trong
+[`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+## Cài đặt
+
+```sh
+cd web
+pnpm install
+
+cd ../api
+uv sync
+```
+
+Tạo `web/.env` và `api/.env` từ các file `.env.example` tương ứng trước khi
+chạy Docker Compose.
+
+## Chạy môi trường phát triển
+
+```sh
+make docker-dev
+make migration-up
+make seed
+
+cd web
+pnpm dev
+```
+
+Web chạy ở cổng `3000` và gọi API ở `http://localhost:8000/api/v1` theo mặc
+định của `web/.env`.
+
+## Kiểm tra trước khi commit
+
+Lần bàn giao gần nhất chỉ giao code, chưa chạy các lệnh dưới đây. Chạy lại
+trước khi commit:
+
+```sh
+cd web
+pnpm build
+
+cd ../api
+uv run ruff check src alembic
+```
+
+Kiểm tra nhanh quy tắc hạn chót công việc con (không cần DB):
+
+```powershell
+cd api
+@'
+from datetime import datetime, timezone
+from fastapi import HTTPException
+from src.modules.tasks.router import ensure_due_within_parent as f
+
+day = lambda value: datetime(2026, 1, value, tzinfo=timezone.utc)
+f(day(10), day(9))
+f(None, day(9))
+try:
+    f(day(10), day(11))
+except HTTPException as error:
+    assert error.status_code == 422
+else:
+    raise AssertionError("phải chặn hạn chót công việc con vượt quá cha")
+print("ok")
+'@ | uv run python -
+```
+
+## Kiểm tra giao diện thủ công
+
+Mở `/projects/:projectId`:
+
+1. Gõ liên tục vào ô "Tìm công việc" và ô tiêu đề công việc; bảng không được
+   giật, không render lại toàn bộ hàng mỗi ký tự (xem React Profiler).
+2. Tab `Dòng thời gian`, thang `Tuần`: mỗi ngày thứ Hai hiện `dd/MM` để biết
+   tuần thuộc tháng nào.
+3. Công việc con có hạn chót lớn hơn công việc cha: API trả 422 và giao diện
+   hiện thông báo; ô hạn chót của công việc con chặn chọn ngày vượt quá cha.
+4. Rút ngắn hạn chót công việc cha xuống trước hạn của công việc con: API trả
+   422.
+5. Tab `Bảng`: ba cột trạng thái, kéo thả đổi trạng thái, lọc theo từ khóa và
+   người thực hiện.
+
+## Ghi chú
+
+- Không thêm dependency mới và không có migration mới trong lần bàn giao này.
+- Route tree `web/src/routeTree.gen.ts` là file sinh tự động; `pnpm build` cập
+  nhật lại file này.

@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 
 import { api } from "@/api";
+import { ProjectTaskBoard } from "@/feat/project/components/project-task-board";
 import { ProjectTaskList } from "@/feat/project/components/project-task-list";
 import { ProjectTimeline } from "@/feat/project/components/project-timeline";
-// import { ProjectTaskBoard } from "@/feat/project/components/project-task-board";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
@@ -22,11 +22,11 @@ export const Route = createFileRoute("/_app/projects/$projectId")({
 
 const projectTabs = [
   { value: "summary", label: "Tổng quan", icon: LayoutDashboard },
+  { value: "timeline", label: "Dòng thời gian", icon: CalendarDays },
   { value: "list", label: "Danh sách", icon: List },
   { value: "board", label: "Bảng", icon: Columns3 },
-  { value: "development", label: "Phát triển", icon: Code2 },
-  { value: "form", label: "Biểu mẫu", icon: ClipboardList },
-  { value: "timeline", label: "Dòng thời gian", icon: CalendarDays },
+  // { value: "development", label: "Phát triển", icon: Code2 },
+  // { value: "form", label: "Biểu mẫu", icon: ClipboardList },
   { value: "docs", label: "Tài liệu", icon: FileText },
 ] as const;
 
@@ -98,7 +98,7 @@ function ProjectPage() {
                 projectKey={project.project_key}
               />
             )}
-            {/* {value === "board" && <ProjectTaskBoard projectId={project.id} />} */}
+            {value === "board" && <ProjectTaskBoard projectId={project.id} />}
           </TabsContent>
         ))}
       </Tabs>

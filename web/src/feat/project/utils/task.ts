@@ -26,7 +26,11 @@ export function groupTasks(tasks: Task[]) {
   }
   ordered.push(...tasks.filter((task) => !included.has(task.id)).sort(compare));
 
-  return { roots, children, ordered };
+  const byId = new Map<UUID, Task>(
+    tasks.map((task): [UUID, Task] => [task.id, task]),
+  );
+
+  return { roots, children, ordered, byId };
 }
 
 export function projectKeyPrefix(projectKey: string) {

@@ -14,6 +14,9 @@ export const priorities: { value: TaskPriority; label: string }[] = [
   { value: "highest", label: "Khẩn cấp" },
 ];
 
+export const statusValues = statuses.map((item) => item.value);
+export const priorityValues = priorities.map((item) => item.value);
+
 export const taskQueryKey = (projectId: UUID) => ["project-tasks", projectId];
 export const memberQueryKey = (projectId: UUID) => [
   "project-members",

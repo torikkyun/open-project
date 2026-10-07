@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,6 +22,19 @@ from src.modules.tasks.schema import (
 from src.modules.users.models import User
 
 router = APIRouter(tags=["tasks"])
+
+
+def ensure_due_within_parent(
+    parent_due_at: datetime | None, due_at: datetime | None
+) -> None:
+    """Công việc con không được có hạn chót vượt quá công việc cha."""
+    if parent_due_at is None or due_at is None:
+        return
+    if due_at > parent_due_at:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Hạn chót của công việc con không được vượt quá công việc cha",
+        )
 
 
 @router.get("/projects/{project_id}/tasks", response_model=list[TaskRead])
@@ -75,6 +89,7 @@ async def create_task(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "Subtask không thể có subtask con",
             )
+        ensure_due_within_parent(parent_task.due_at, body.due_at)
     if body.assignee_id is not None:
         await require_project_user(session, project_id, body.assignee_id)
     reporter_id = body.reporter_id or user.id
@@ -188,6 +203,27 @@ async def update_task(
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "Người báo cáo không được là null"
         )
+    if "due_at" in changes:
+        if task.parent_task_id is not None:
+            parent_task = await session.scalar(
+                select(Task).where(Task.id == task.parent_task_id)
+            )
+            ensure_due_within_parent(
+                parent_task.due_at if parent_task else None, changes["due_at"]
+            )
+        children = await session.scalars(
+            select(Task).where(Task.parent_task_id == task.id)
+        )
+        for child in children:
+            if (
+                changes["due_at"] is not None
+                and child.due_at is not None
+                and child.due_at > changes["due_at"]
+            ):
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Hạn chót công việc cha không được nhỏ hơn hạn chót công việc con",
+                )
     if changes.get("assignee_id") is not None:
         await require_project_user(session, project_id, changes["assignee_id"])
     if changes.get("reporter_id") is not None:

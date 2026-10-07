@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useDeferredValue,
   useMemo,
   useRef,
   useState,
@@ -31,11 +32,12 @@ import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
-import { priorities, statuses } from "../../constants/task";
+import { priorities, priorityValues, statuses, statusValues } from "../../constants/task";
 import { useProjectTasks } from "./hooks";
 import { QueryMessage } from "../query-message";
 import { ProjectTaskTable } from "../project-task-table";
 import { TaskListFilters } from "./task-list-filters";
+import { TaskTitleInput } from "./task-title-input";
 import type { TaskListContext } from "./types";
 import { dateInputValue, dateValue, moveTask } from "./utils";
 import { groupTasks, projectKeyPrefix } from "../../utils/task";
@@ -108,7 +110,7 @@ export function ProjectTaskList({
   const allTasksCollapsed =
     parentTaskIds.length > 0 &&
     parentTaskIds.every((taskId) => collapsedTasks[taskId]);
-  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const normalizedSearch = useDeferredValue(search).trim().toLocaleLowerCase();
   const visibleTasks = useMemo(() => {
     const matches = (task: Task) =>
       (!normalizedSearch ||
@@ -223,16 +225,16 @@ export function ProjectTaskList({
     membersById: tasks.membersById,
     rowSelection,
     allTasks: tasks.tasks,
+    byId: taskGroups.byId,
     visibleTasks,
     children: taskGroups.children,
-    titleDrafts: tasks.titleDrafts,
+    memberItems: tasks.memberItems,
     shortProjectKey,
     newTask: tasks.newTask,
     quickCreateOpen: tasks.quickCreateOpen,
     reorderPending: tasks.reorderPending,
     setRowSelection,
     setCollapsedTasks,
-    setTitleDrafts: tasks.setTitleDrafts,
     setNewTask: tasks.setNewTask,
     updateTask: tasks.updateTask,
     toggleAllTasks,
@@ -359,38 +361,7 @@ export function ProjectTaskList({
                 <span className="shrink-0 whitespace-nowrap text-primary">
                   {c.shortProjectKey.toUpperCase()}-{task.task_number}
                 </span>
-                <Input
-                  value={c.titleDrafts[task.id] ?? task.title}
-                  aria-label={`Tiêu đề ${task.title}`}
-                  className="min-w-0 flex-1 truncate border-transparent bg-transparent shadow-none hover:border-input focus-visible:border-ring"
-                  onChange={(event) =>
-                    c.setTitleDrafts((drafts) => ({
-                      ...drafts,
-                      [task.id]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") {
-                      c.setTitleDrafts((drafts) => ({
-                        ...drafts,
-                        [task.id]: task.title,
-                      }));
-                    }
-                  }}
-                  onBlur={(event) => {
-                    const title = event.currentTarget.value.trim();
-                    if (title && title !== task.title) {
-                      c.updateTask(task.id, { title });
-                    } else {
-                      c.setTitleDrafts((drafts) => {
-                        const next = { ...drafts };
-                        delete next[task.id];
-                        return next;
-                      });
-                    }
-                  }}
-                />
+                <TaskTitleInput task={task} updateTask={c.updateTask} />
                 {depth === 0 && (
                   <Button
                     type="button"
@@ -428,7 +399,7 @@ export function ProjectTaskList({
             const task = row.original;
             return (
               <Combobox
-                items={["", ...c.members.map((member) => member.id)]}
+                items={c.memberItems}
                 value={task.assignee_id ?? ""}
                 itemToStringLabel={(id) =>
                   c.membersById.get(id)?.full_name ?? "Chưa phân công"
@@ -505,7 +476,7 @@ export function ProjectTaskList({
             const c = ctxRef.current;
             return (
               <Combobox
-                items={priorities.map((item) => item.value)}
+                items={priorityValues}
                 value={row.original.priority}
                 itemToStringLabel={(value) =>
                   priorities.find((item) => item.value === value)?.label ?? ""
@@ -540,7 +511,7 @@ export function ProjectTaskList({
             const c = ctxRef.current;
             return (
               <Combobox
-                items={statuses.map((item) => item.value)}
+                items={statusValues}
                 value={row.original.status}
                 itemToStringLabel={(value) =>
                   statuses.find((item) => item.value === value)?.label ?? ""
@@ -588,19 +559,26 @@ export function ProjectTaskList({
         columnHelper.display({
           id: "due-date",
           header: "Hạn chót",
-          cell: ({ row }) => (
-            <Input
-              type="date"
-              value={dateInputValue(row.original.due_at)}
-              aria-label={`Ngày kết thúc ${row.original.title}`}
-              className="min-w-32"
-              onChange={(event) =>
-                ctxRef.current.updateTask(row.original.id, {
-                  due_at: dateValue(event.target.value),
-                })
-              }
-            />
-          ),
+          cell: ({ row }) => {
+            const c = ctxRef.current;
+            const parentDueAt = row.original.parent_task_id
+              ? c.byId.get(row.original.parent_task_id)?.due_at
+              : null;
+            return (
+              <Input
+                type="date"
+                value={dateInputValue(row.original.due_at)}
+                max={parentDueAt ? dateInputValue(parentDueAt) : undefined}
+                aria-label={`Ngày kết thúc ${row.original.title}`}
+                className="min-w-32"
+                onChange={(event) =>
+                  c.updateTask(row.original.id, {
+                    due_at: dateValue(event.target.value),
+                  })
+                }
+              />
+            );
+          },
         }),
       ]),
     [],

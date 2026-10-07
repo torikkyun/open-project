@@ -1,5 +1,6 @@
 import {
   Fragment,
+  useDeferredValue,
   useMemo,
   useRef,
   useState,
@@ -41,10 +42,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { priorities, statuses } from "../../constants/task";
+import { priorities, priorityValues, statuses, statusValues } from "../../constants/task";
 import { ProjectTaskTable } from "../project-task-table";
 import { useProjectTasks } from "../project-task-list/hooks";
 import { TaskListFilters } from "../project-task-list/task-list-filters";
+import { TaskTitleInput } from "../project-task-list/task-title-input";
 import type { TaskListContext } from "../project-task-list/types";
 import { dateValue, moveTask } from "../project-task-list/utils";
 import { QueryMessage } from "../query-message";
@@ -153,7 +155,10 @@ function monthSegments(days: Date[]) {
 
 function dayLabel(day: Date, scale: TimelineScale) {
   if (scale === "weeks") {
-    return day.getUTCDate();
+    // Thứ Hai ghi thêm tháng để biết tuần thuộc tháng nào.
+    return day.getUTCDay() === 1
+      ? `${day.getUTCDate()}/${day.getUTCMonth() + 1}`
+      : String(day.getUTCDate());
   }
   if (scale === "months" && day.getUTCDay() !== 1 && day.getUTCDate() !== 1) {
     return null;
@@ -242,6 +247,10 @@ export function ProjectTimeline({
   const { tasks, membersById } = taskData;
 
   const taskGroups = useMemo(() => groupTasks(tasks), [tasks]);
+  const memberItems = useMemo(
+    () => ["", ...taskData.members.map((member) => member.id)],
+    [taskData.members],
+  );
   const parentTaskIds = taskGroups.roots
     .filter((task) => taskGroups.children.has(task.id))
     .map((task) => task.id);
@@ -249,7 +258,7 @@ export function ProjectTimeline({
     parentTaskIds.length > 0 &&
     parentTaskIds.every((taskId) => collapsedTasks[taskId]);
 
-  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const normalizedSearch = useDeferredValue(search).trim().toLocaleLowerCase();
   const visibleTasks = useMemo(() => {
     const matches = (task: Task) =>
       (!normalizedSearch ||
@@ -393,16 +402,16 @@ export function ProjectTimeline({
     membersById: taskData.membersById,
     rowSelection,
     allTasks: tasks,
+    byId: taskGroups.byId,
     visibleTasks,
     children: taskGroups.children,
-    titleDrafts: taskData.titleDrafts,
+    memberItems,
     shortProjectKey: keyPrefix,
     newTask: taskData.newTask,
     quickCreateOpen: taskData.quickCreateOpen,
     reorderPending: taskData.reorderPending,
     setRowSelection,
     setCollapsedTasks,
-    setTitleDrafts: taskData.setTitleDrafts,
     setNewTask: taskData.setNewTask,
     updateTask: taskData.updateTask,
     toggleAllTasks,
@@ -524,38 +533,7 @@ export function ProjectTimeline({
                 <span className="shrink-0 whitespace-nowrap text-primary">
                   {c.shortProjectKey.toUpperCase()}-{task.task_number}
                 </span>
-                <Input
-                  value={c.titleDrafts[task.id] ?? task.title}
-                  aria-label={`Tiêu đề ${task.title}`}
-                  className="min-w-0 flex-1 truncate border-transparent bg-transparent shadow-none hover:border-input focus-visible:border-ring"
-                  onChange={(event) =>
-                    c.setTitleDrafts((drafts) => ({
-                      ...drafts,
-                      [task.id]: event.target.value,
-                    }))
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") {
-                      c.setTitleDrafts((drafts) => ({
-                        ...drafts,
-                        [task.id]: task.title,
-                      }));
-                    }
-                  }}
-                  onBlur={(event) => {
-                    const title = event.currentTarget.value.trim();
-                    if (title && title !== task.title) {
-                      c.updateTask(task.id, { title });
-                    } else {
-                      c.setTitleDrafts((drafts) => {
-                        const next = { ...drafts };
-                        delete next[task.id];
-                        return next;
-                      });
-                    }
-                  }}
-                />
+                <TaskTitleInput task={task} updateTask={c.updateTask} />
                 {depth === 0 && (
                   <Button
                     type="button"
@@ -593,7 +571,7 @@ export function ProjectTimeline({
             const task = row.original;
             return (
               <Combobox
-                items={["", ...c.members.map((member) => member.id)]}
+                items={c.memberItems}
                 value={task.assignee_id ?? ""}
                 itemToStringLabel={(id) =>
                   c.membersById.get(id)?.full_name ?? "Chưa phân công"
@@ -633,7 +611,7 @@ export function ProjectTimeline({
             const c = ctxRef.current;
             return (
               <Combobox
-                items={priorities.map((item) => item.value)}
+                items={priorityValues}
                 value={row.original.priority}
                 itemToStringLabel={(value) =>
                   priorities.find((item) => item.value === value)?.label ?? ""
@@ -668,7 +646,7 @@ export function ProjectTimeline({
             const c = ctxRef.current;
             return (
               <Combobox
-                items={statuses.map((item) => item.value)}
+                items={statusValues}
                 value={row.original.status}
                 itemToStringLabel={(value) =>
                   statuses.find((item) => item.value === value)?.label ?? ""
