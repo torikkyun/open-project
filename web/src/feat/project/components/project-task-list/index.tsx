@@ -28,14 +28,17 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import { InputGroupAddon } from "@/components/ui/input-group";
 import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
+import { UserAvatar } from "@/components/user-avatar";
 import { priorities, priorityValues, statuses, statusValues } from "../../constants/task";
 import { useProjectTasks } from "./hooks";
 import { QueryMessage } from "../query-message";
 import { ProjectTaskTable } from "../project-task-table";
+import { TaskDetailSheet, TaskKeyButton } from "../task-detail";
 import { TaskListFilters } from "./task-list-filters";
 import { TaskTitleInput } from "./task-title-input";
 import type { TaskListContext } from "./types";
@@ -97,6 +100,7 @@ export function ProjectTaskList({
   const [rowSelection, setRowSelection] = useState<Record<string, true>>({});
   const [collapsedTasks, setCollapsedTasks] = useState<Record<UUID, true>>({});
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<UUID | null>(null);
   const [dragRevision, setDragRevision] = useState(0);
 
   const tasks = useProjectTasks(projectId);
@@ -236,6 +240,7 @@ export function ProjectTaskList({
     setRowSelection,
     setCollapsedTasks,
     setNewTask: tasks.setNewTask,
+    openTaskDetail: setDetailTaskId,
     updateTask: tasks.updateTask,
     toggleAllTasks,
     childrenHidden,
@@ -358,9 +363,10 @@ export function ProjectTaskList({
                 ) : (
                   <span className="size-6 shrink-0" />
                 )}
-                <span className="shrink-0 whitespace-nowrap text-primary">
-                  {c.shortProjectKey.toUpperCase()}-{task.task_number}
-                </span>
+                <TaskKeyButton
+                  label={`${c.shortProjectKey.toUpperCase()}-${task.task_number}`}
+                  onOpen={() => c.openTaskDetail(task.id)}
+                />
                 <TaskTitleInput task={task} updateTask={c.updateTask} />
                 {depth === 0 && (
                   <Button
@@ -416,13 +422,24 @@ export function ProjectTaskList({
                   placeholder="Chưa phân công"
                   className="w-40"
                   showClear
-                />
+                >
+                  <InputGroupAddon align="inline-start">
+                    <UserAvatar
+                      user={
+                        task.assignee_id
+                          ? c.membersById.get(task.assignee_id)
+                          : null
+                      }
+                    />
+                  </InputGroupAddon>
+                </ComboboxInput>
                 <ComboboxContent>
                   <ComboboxEmpty>Không tìm thấy người phù hợp.</ComboboxEmpty>
                   <ComboboxList>
                     <ComboboxItem value="">Chưa phân công</ComboboxItem>
                     {c.members.map((member) => (
                       <ComboboxItem key={member.id} value={member.id}>
+                        <UserAvatar user={member} />
                         {member.full_name}
                       </ComboboxItem>
                     ))}
@@ -454,12 +471,19 @@ export function ProjectTaskList({
                   aria-label={`Người báo cáo ${row.original.title}`}
                   placeholder="Chọn người báo cáo"
                   className="w-40"
-                />
+                >
+                  <InputGroupAddon align="inline-start">
+                    <UserAvatar
+                      user={c.membersById.get(row.original.reporter_id)}
+                    />
+                  </InputGroupAddon>
+                </ComboboxInput>
                 <ComboboxContent>
                   <ComboboxEmpty>Không tìm thấy người phù hợp.</ComboboxEmpty>
                   <ComboboxList>
                     {c.members.map((member) => (
                       <ComboboxItem key={member.id} value={member.id}>
+                        <UserAvatar user={member} />
                         {member.full_name}
                       </ComboboxItem>
                     ))}
@@ -602,6 +626,12 @@ export function ProjectTaskList({
       ),
     })),
   }));
+
+  const detailTask =
+    tasks.tasks.find((task) => task.id === detailTaskId) ?? null;
+  const detailParentTask = detailTask?.parent_task_id
+    ? (taskGroups.byId.get(detailTask.parent_task_id) ?? null)
+    : null;
 
   const newTaskRow = tasks.newTask && (
     <TableRow className="bg-muted/40">
@@ -898,6 +928,16 @@ export function ProjectTaskList({
           </div>
         </div>
       </section>
+      <TaskDetailSheet
+        projectId={projectId}
+        projectKey={shortProjectKey}
+        task={detailTask}
+        parentTask={detailParentTask}
+        members={tasks.members}
+        membersById={tasks.membersById}
+        updateTask={tasks.updateTask}
+        onClose={() => setDetailTaskId(null)}
+      />
       <DragOverlay>
         {activeTask && (
           <div

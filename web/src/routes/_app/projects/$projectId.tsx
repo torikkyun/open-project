@@ -8,9 +8,11 @@ import {
   FileText,
   LayoutDashboard,
   List,
+  UsersRound,
 } from "lucide-react";
 
 import { api } from "@/api";
+import { ProjectMembers } from "@/feat/project/components/project-members";
 import { ProjectTaskBoard } from "@/feat/project/components/project-task-board";
 import { ProjectTaskList } from "@/feat/project/components/project-task-list";
 import { ProjectTimeline } from "@/feat/project/components/project-timeline";
@@ -25,6 +27,7 @@ const projectTabs = [
   { value: "timeline", label: "Dòng thời gian", icon: CalendarDays },
   { value: "list", label: "Danh sách", icon: List },
   { value: "board", label: "Bảng", icon: Columns3 },
+  { value: "members", label: "Thành viên", icon: UsersRound },
   // { value: "development", label: "Phát triển", icon: Code2 },
   // { value: "form", label: "Biểu mẫu", icon: ClipboardList },
   { value: "docs", label: "Tài liệu", icon: FileText },
@@ -98,7 +101,13 @@ function ProjectPage() {
                 projectKey={project.project_key}
               />
             )}
-            {value === "board" && <ProjectTaskBoard projectId={project.id} />}
+            {value === "board" && (
+              <ProjectTaskBoard
+                projectId={project.id}
+                projectKey={project.project_key}
+              />
+            )}
+            {value === "members" && <ProjectMembers project={project} />}
           </TabsContent>
         ))}
       </Tabs>

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.infra.db.base import Base
 from src.infra.settings import settings
-from src.modules.auth.models import RefreshSession  # noqa: F401
+from src.modules.auth.models import PasswordResetToken, RefreshSession  # noqa: F401
 from src.modules.projects.models import Project, ProjectMember  # noqa: F401
 from src.modules.tasks.models import Comment, Task  # noqa: F401
 from src.modules.users.models import User  # noqa: F401

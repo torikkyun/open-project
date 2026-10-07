@@ -1,4 +1,5 @@
 import type {
+  Attachment,
   Comment,
   CommentCreate,
   Project,
@@ -11,14 +12,18 @@ import type {
   TaskUpdate,
   User,
   UserCreate,
+  UserInvite,
   UUID,
 } from "./contract";
-import { request } from "./client";
+import { apiUrl, request } from "./client";
 
 const jsonBody = (method: string, body?: unknown): RequestInit => ({
   method,
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
+
+const attachmentPath = (projectId: UUID, taskId: UUID) =>
+  `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/attachments`;
 
 const listTasks = (
   projectId: UUID,
@@ -55,6 +60,18 @@ export const api = {
     request<void>("/auth/login", jsonBody("POST", { email, password }), false),
   refresh: () => request<void>("/auth/refresh", { method: "POST" }, false),
   logout: () => request<void>("/auth/logout", { method: "POST" }, false),
+  requestPasswordReset: (email: string) =>
+    request<void>(
+      "/auth/password-reset",
+      jsonBody("POST", { email }),
+      false,
+    ),
+  confirmPasswordReset: (token: string, password: string) =>
+    request<void>(
+      "/auth/password-reset/confirm",
+      jsonBody("POST", { token, password }),
+      false,
+    ),
   currentUser: () => request<User>("/users/me"),
   updateProfile: (fullName?: string, file?: File) => {
     const body = new FormData();
@@ -65,7 +82,7 @@ export const api = {
   updateAvatar: (file: File) => api.updateProfile(undefined, file),
   listUsers: () => request<User[]>("/users"),
   createUser: (body: UserCreate) =>
-    request<User>("/users", jsonBody("POST", body)),
+    request<UserInvite>("/users", jsonBody("POST", body)),
   updateUser: (userId: UUID, body: UserUpdate) =>
     request<User>(
       `/users/admin/${encodeURIComponent(userId)}`,
@@ -90,6 +107,10 @@ export const api = {
     }),
   listMembers: (projectId: UUID) =>
     request<User[]>(`/projects/${encodeURIComponent(projectId)}/members`),
+  listMemberCandidates: (projectId: UUID) =>
+    request<User[]>(
+      `/projects/${encodeURIComponent(projectId)}/members/candidates`,
+    ),
   addMember: (projectId: UUID, userId: UUID) =>
     request<void>(
       `/projects/${encodeURIComponent(projectId)}/members`,
@@ -136,6 +157,31 @@ export const api = {
     request<void>(
       `/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
       { method: "DELETE" },
+    ),
+  listAttachments: (projectId: UUID, taskId: UUID) =>
+    request<Attachment[]>(attachmentPath(projectId, taskId)),
+  createAttachment: (
+    projectId: UUID,
+    taskId: UUID,
+    file: File,
+    commentId?: UUID,
+  ) => {
+    const body = new FormData();
+    body.append("file", file);
+    if (commentId) body.append("comment_id", commentId);
+    return request<Attachment>(attachmentPath(projectId, taskId), {
+      method: "POST",
+      body,
+    });
+  },
+  deleteAttachment: (projectId: UUID, taskId: UUID, attachmentId: UUID) =>
+    request<void>(
+      `${attachmentPath(projectId, taskId)}/${encodeURIComponent(attachmentId)}`,
+      { method: "DELETE" },
+    ),
+  attachmentDownloadUrl: (projectId: UUID, taskId: UUID, attachmentId: UUID) =>
+    apiUrl(
+      `${attachmentPath(projectId, taskId)}/${encodeURIComponent(attachmentId)}/download`,
     ),
 };
 

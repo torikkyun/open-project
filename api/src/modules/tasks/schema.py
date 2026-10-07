@@ -94,6 +94,19 @@ class CommentCreate(BaseModel):
         return value
 
 
+class AttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    task_id: UUID
+    comment_id: UUID | None
+    uploader_id: UUID
+    original_name: str
+    content_type: str
+    size_bytes: int
+    created_at: datetime
+
+
 class CommentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

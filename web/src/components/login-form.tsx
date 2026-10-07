@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { Link } from "@tanstack/react-router"
 import { cn } from "cn"
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react"
 
@@ -88,7 +89,15 @@ export function LoginForm({
                 />
               </Field>
               <Field data-invalid={!!error}>
-                <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
+                <div className="flex items-center justify-between gap-2">
+                  <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
+                  <Link
+                    to="/reset"
+                    className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
                 <InputGroup>
                   <InputGroupInput
                     id="password"

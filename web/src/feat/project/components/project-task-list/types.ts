@@ -40,6 +40,7 @@ export type TaskListContext = {
   setRowSelection: Dispatch<SetStateAction<Record<string, true>>>;
   setCollapsedTasks: Dispatch<SetStateAction<Record<UUID, true>>>;
   setNewTask: Dispatch<SetStateAction<TaskDraft | null>>;
+  openTaskDetail: (taskId: UUID) => void;
   updateTask: (taskId: UUID, changes: TaskUpdate) => void;
   toggleAllTasks: () => void;
   childrenHidden: boolean;

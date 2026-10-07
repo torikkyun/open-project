@@ -7,14 +7,23 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { UserAvatar } from "@/components/user-avatar";
 import { statuses } from "../../constants/task";
 import { useProjectTasks } from "../project-task-list/hooks";
 import { QueryMessage } from "../query-message";
+import { TaskDetailSheet } from "../task-detail";
 
-export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
+export function ProjectTaskBoard({
+  projectId,
+  projectKey,
+}: {
+  projectId: UUID;
+  projectKey: string;
+}) {
   const taskData = useProjectTasks(projectId);
   const [search, setSearch] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
+  const [detailTaskId, setDetailTaskId] = useState<UUID | null>(null);
   const normalizedSearch = useDeferredValue(search).trim().toLocaleLowerCase();
   const { tasks, members, membersById, updateTask } = taskData;
 
@@ -36,6 +45,11 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
       new Map<UUID, Task>(tasks.map((task): [UUID, Task] => [task.id, task])),
     [tasks],
   );
+
+  const detailTask = detailTaskId ? (tasksById.get(detailTaskId) ?? null) : null;
+  const detailParentTask = detailTask?.parent_task_id
+    ? (tasksById.get(detailTask.parent_task_id) ?? null)
+    : null;
 
   if (taskData.isPending || taskData.error) {
     return <QueryMessage error={taskData.error} pending={taskData.isPending} />;
@@ -126,6 +140,16 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
                           event.dataTransfer.setData("text/plain", task.id);
                           event.dataTransfer.effectAllowed = "move";
                         }}
+                        onClick={(event) => {
+                          if (
+                            (event.target as HTMLElement).closest(
+                              "select, button, a",
+                            )
+                          ) {
+                            return;
+                          }
+                          setDetailTaskId(task.id);
+                        }}
                         className="cursor-grab rounded-lg border bg-background p-3 shadow-sm active:cursor-grabbing"
                       >
                         {parent && (
@@ -135,8 +159,11 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
                         )}
                         <h3 className="text-sm font-medium">{task.title}</h3>
                         <div className="mt-3 flex items-center justify-between gap-2">
-                          <span className="truncate text-xs text-muted-foreground">
-                            {assignee?.full_name ?? "Chưa giao"}
+                          <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                            <UserAvatar user={assignee} />
+                            <span className="truncate">
+                              {assignee?.full_name ?? "Chưa giao"}
+                            </span>
                           </span>
                           <NativeSelect
                             size="sm"
@@ -189,6 +216,16 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
           <RotateCw />
         </Button>
       </div>
+      <TaskDetailSheet
+        projectId={projectId}
+        projectKey={projectKey}
+        task={detailTask}
+        parentTask={detailParentTask}
+        members={members}
+        membersById={membersById}
+        updateTask={updateTask}
+        onClose={() => setDetailTaskId(null)}
+      />
     </section>
   );
 }

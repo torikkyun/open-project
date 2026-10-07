@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -6,19 +7,32 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.session import get_session
+from src.infra.mail import MailNotConfigured, send_password_reset
 from src.infra.security import (
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+    hash_password,
     hash_refresh_token,
     verify_password,
 )
 from src.infra.settings import settings
 from src.modules.auth.models import RefreshSession
-from src.modules.auth.schema import LoginRequest
+from src.modules.auth.schema import (
+    LoginRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+)
+from src.modules.auth.service import (
+    consume_reset_token,
+    create_reset_token,
+    revoke_user_sessions,
+)
 from src.modules.users.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+logger = logging.getLogger(__name__)
 
 
 ACCESS_COOKIE = "open-project-access"
@@ -149,3 +163,39 @@ async def logout(
             refresh_session.revoked_at = datetime.now(UTC)
             await session.commit()
     clear_auth_cookies(response)
+
+
+@router.post("/password-reset", status_code=status.HTTP_204_NO_CONTENT)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    # ponytail: chưa giới hạn số lần yêu cầu theo email/IP; thêm rate limit khi
+    # bị lạm dụng. Luôn trả 204 để không lộ email nào đang tồn tại.
+    user = await session.scalar(
+        select(User).where(func.lower(User.email) == str(body.email).lower())
+    )
+    if user is None or not user.is_active:
+        return
+    token = await create_reset_token(session, user)
+    await session.commit()
+    try:
+        await send_password_reset(user.email, user.full_name, token)
+    except (MailNotConfigured, OSError) as error:
+        logger.warning("Không gửi được email đặt lại mật khẩu: %s", error)
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+async def confirm_password_reset(
+    body: PasswordResetConfirm,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    user = await consume_reset_token(session, body.token)
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn",
+        )
+    user.password_hash = hash_password(body.password)
+    await revoke_user_sessions(session, user.id)
+    await session.commit()

@@ -18,6 +18,7 @@ import {
 
 import { api, type User, type UserCreate, type UserUpdate } from "@/api"
 import { useAuth } from "@/components/auth-provider"
+import { UserAvatar } from "@/components/user-avatar"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,8 +28,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import {
   NativeSelect,
   NativeSelectOption,
@@ -59,6 +71,7 @@ function AccountManagementPage() {
   const queryClient = useQueryClient()
   const [accountDialog, setAccountDialog] = useState<AccountDialog>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -69,9 +82,9 @@ function AccountManagementPage() {
   })
   const createUserMutation = useMutation({
     mutationFn: api.createUser,
-    onSuccess: (createdUser) => {
+    onSuccess: (invite) => {
       queryClient.setQueryData<User[]>(usersQueryKey, (accounts) =>
-        [...(accounts ?? []), createdUser].sort((a, b) =>
+        [...(accounts ?? []), invite.user].sort((a, b) =>
           a.email.localeCompare(b.email),
         ),
       )
@@ -144,16 +157,12 @@ function AccountManagementPage() {
       const account: UserCreate = {
         email: String(form.get("email")),
         full_name: String(form.get("full_name")),
-        password: String(form.get("password")),
       }
-      createUserMutation.mutate(account, {
-        onSuccess: () => setAccountDialog(null),
-      })
+      createUserMutation.mutate(account)
       return
     }
 
     const changes: UserUpdate = {
-      email: String(form.get("email")),
       full_name: String(form.get("full_name")),
       role: String(form.get("role")) as User["role"],
     }
@@ -172,6 +181,7 @@ function AccountManagementPage() {
 
   const savingAccount =
     createUserMutation.isPending || updateUserMutation.isPending
+  const invite = createUserMutation.data
 
   return (
     <main className="flex h-[calc(100svh-3.75rem)] min-h-0 flex-col gap-2 overflow-hidden bg-muted/30 sm:p-2 sm:pb-0 md:h-[calc(100svh-4.25rem)]">
@@ -186,6 +196,7 @@ function AccountManagementPage() {
           onClick={() => {
             createUserMutation.reset()
             updateUserMutation.reset()
+            setCopied(false)
             setAccountDialog({ type: "create" })
           }}
         >
@@ -281,11 +292,16 @@ function AccountManagementPage() {
               filteredAccounts.map((account) => (
                 <TableRow key={account.id}>
                   <TableCell>
-                    <div className="flex min-w-48 flex-col gap-1">
-                      <span className="font-medium">{account.full_name}</span>
-                      <span className="text-muted-foreground">
-                        {account.email}
-                      </span>
+                    <div className="flex min-w-48 items-center gap-2">
+                      <UserAvatar user={account} />
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <span className="font-medium">
+                          {account.full_name}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {account.email}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -392,12 +408,55 @@ function AccountManagementPage() {
                 : "Sửa tài khoản"}
             </DialogTitle>
             <DialogDescription>
-              {accountDialog?.type === "create"
-                ? "Tạo tài khoản mới cho thành viên."
-                : "Cập nhật thông tin và vai trò tài khoản."}
+              {invite
+                ? "Sao chép liên kết đặt lại mật khẩu để gửi cho thành viên."
+                : accountDialog?.type === "create"
+                  ? "Nhập email và họ tên; hệ thống tự sinh mật khẩu và gửi liên kết đặt lại."
+                  : "Cập nhật thông tin và vai trò tài khoản."}
             </DialogDescription>
           </DialogHeader>
-          {accountDialog && (
+          {invite ? (
+            <div className="flex flex-col gap-4">
+              <p className="text-sm">
+                Đã tạo tài khoản{" "}
+                <span className="font-medium">{invite.user.full_name}</span>.
+                Hệ thống đã sinh mật khẩu và gửi liên kết đặt lại mật khẩu tới{" "}
+                {invite.user.email}.
+              </p>
+              <Field>
+                <FieldLabel htmlFor="account-reset-link">
+                  Liên kết đặt lại mật khẩu
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    id="account-reset-link"
+                    readOnly
+                    value={invite.reset_url}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(invite.reset_url)
+                        setCopied(true)
+                      }}
+                    >
+                      {copied ? "Đã sao chép" : "Sao chép"}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                <FieldDescription>
+                  Liên kết chỉ dùng được một lần. Gửi cho thành viên nếu email
+                  không tới.
+                </FieldDescription>
+              </Field>
+              <DialogFooter>
+                <Button type="button" onClick={() => setAccountDialog(null)}>
+                  Đóng
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : accountDialog ? (
             <form onSubmit={submitAccount} className="flex flex-col gap-4">
               {(createUserMutation.error ?? updateUserMutation.error) && (
                 <p role="alert" className="text-sm text-destructive">
@@ -420,55 +479,55 @@ function AccountManagementPage() {
                     maxLength={160}
                   />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="account-email">Email</FieldLabel>
-                  <Input
-                    id="account-email"
-                    name="email"
-                    type="email"
-                    defaultValue={
-                      accountDialog.type === "edit"
-                        ? accountDialog.account.email
-                        : ""
-                    }
-                    required
-                    maxLength={320}
-                  />
-                </Field>
                 {accountDialog.type === "create" ? (
                   <Field>
-                    <FieldLabel htmlFor="account-password">Mật khẩu</FieldLabel>
+                    <FieldLabel htmlFor="account-email">Email</FieldLabel>
                     <Input
-                      id="account-password"
-                      name="password"
-                      type="password"
-                      minLength={12}
-                      maxLength={128}
+                      id="account-email"
+                      name="email"
+                      type="email"
                       required
+                      maxLength={320}
                     />
+                    <FieldDescription>
+                      Mật khẩu do hệ thống sinh và gửi qua email đặt lại.
+                    </FieldDescription>
                   </Field>
                 ) : (
-                  <Field>
-                    <FieldLabel htmlFor="account-role">Vai trò</FieldLabel>
-                    <NativeSelect
-                      id="account-role"
-                      name="role"
-                      defaultValue={accountDialog.account.role}
-                    >
-                      <NativeSelectOption value="admin">
-                        Quản trị viên
-                      </NativeSelectOption>
-                      <NativeSelectOption
-                        value="employee"
-                        disabled={
-                          !canRemoveAdmin(accountDialog.account) &&
-                          accountDialog.account.role === "admin"
-                        }
+                  <>
+                    <Field>
+                      <FieldLabel htmlFor="account-email">Email</FieldLabel>
+                      <Input
+                        id="account-email"
+                        readOnly
+                        value={accountDialog.account.email}
+                      />
+                      <FieldDescription>
+                        Tạm thời chưa đổi được email.
+                      </FieldDescription>
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="account-role">Vai trò</FieldLabel>
+                      <NativeSelect
+                        id="account-role"
+                        name="role"
+                        defaultValue={accountDialog.account.role}
                       >
-                        Nhân viên
-                      </NativeSelectOption>
-                    </NativeSelect>
-                  </Field>
+                        <NativeSelectOption value="admin">
+                          Quản trị viên
+                        </NativeSelectOption>
+                        <NativeSelectOption
+                          value="employee"
+                          disabled={
+                            !canRemoveAdmin(accountDialog.account) &&
+                            accountDialog.account.role === "admin"
+                          }
+                        >
+                          Nhân viên
+                        </NativeSelectOption>
+                      </NativeSelect>
+                    </Field>
+                  </>
                 )}
               </FieldGroup>
               <DialogFooter>
@@ -485,7 +544,7 @@ function AccountManagementPage() {
                 </Button>
               </DialogFooter>
             </form>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
 

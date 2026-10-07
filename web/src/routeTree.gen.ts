@@ -16,6 +16,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects/$projectId'
 import { Route as AuthLoginIndexRouteImport } from './routes/_auth/login/index'
+import { Route as AuthResetIndexRouteImport } from './routes/_auth/reset/index'
 
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/_app',
@@ -50,6 +51,11 @@ const AuthLoginIndexRoute = AuthLoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const AuthResetIndexRoute = AuthResetIndexRouteImport.update({
+  id: '/reset/',
+  path: '/reset/',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AppAdminUsersRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/login/': typeof AuthLoginIndexRoute
+  '/reset/': typeof AuthResetIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AppAdminUsersRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/login': typeof AuthLoginIndexRoute
+  '/reset': typeof AuthResetIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -74,13 +82,25 @@ export interface FileRoutesById {
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/_auth/login/': typeof AuthLoginIndexRoute
+  '/_auth/reset/': typeof AuthResetIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/settings' | '/admin/users' | '/projects/$projectId' | '/login/'
+    | '/'
+    | '/settings'
+    | '/admin/users'
+    | '/projects/$projectId'
+    | '/login/'
+    | '/reset/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/admin/users' | '/projects/$projectId' | '/login'
+  to:
+    | '/'
+    | '/settings'
+    | '/admin/users'
+    | '/projects/$projectId'
+    | '/login'
+    | '/reset'
   id:
     | '__root__'
     | '/_app'
@@ -90,6 +110,7 @@ export interface FileRouteTypes {
     | '/_app/admin/users'
     | '/_app/projects/$projectId'
     | '/_auth/login/'
+    | '/_auth/reset/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -148,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginIndexRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_auth/reset/': {
+      id: '/_auth/reset/'
+      path: '/reset'
+      fullPath: '/reset/'
+      preLoaderRoute: typeof AuthResetIndexRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
   }
 }
 
@@ -171,10 +199,12 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 
 interface AuthRouteRouteChildren {
   AuthLoginIndexRoute: typeof AuthLoginIndexRoute
+  AuthResetIndexRoute: typeof AuthResetIndexRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthLoginIndexRoute: AuthLoginIndexRoute,
+  AuthResetIndexRoute: AuthResetIndexRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(

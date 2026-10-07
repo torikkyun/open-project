@@ -34,6 +34,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import { InputGroupAddon } from "@/components/ui/input-group";
 import {
   Table,
   TableBody,
@@ -42,8 +43,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UserAvatar } from "@/components/user-avatar";
 import { priorities, priorityValues, statuses, statusValues } from "../../constants/task";
 import { ProjectTaskTable } from "../project-task-table";
+import { TaskDetailSheet, TaskKeyButton } from "../task-detail";
 import { useProjectTasks } from "../project-task-list/hooks";
 import { TaskListFilters } from "../project-task-list/task-list-filters";
 import { TaskTitleInput } from "../project-task-list/task-title-input";
@@ -131,6 +134,13 @@ function getTimelineDays(tasks: Task[], scale: TimelineScale) {
   return { first, end, days, today };
 }
 
+function monthName(day: Date) {
+  return day.toLocaleDateString("vi-VN", {
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
 function monthSegments(days: Date[]) {
   const segments: { key: string; label: string; count: number }[] = [];
   for (const day of days) {
@@ -153,23 +163,29 @@ function monthSegments(days: Date[]) {
   return segments;
 }
 
-function dayLabel(day: Date, scale: TimelineScale) {
-  if (scale === "weeks") {
-    // Thứ Hai ghi thêm tháng để biết tuần thuộc tháng nào.
-    return day.getUTCDay() === 1
-      ? `${day.getUTCDate()}/${day.getUTCMonth() + 1}`
-      : String(day.getUTCDate());
+// Nhãn theo tuần kiểu Jira: tuần vắt qua hai tháng hiện "thg 9 / thg 10", các
+// tuần còn lại chỉ hiện tên tháng.
+function weekSegments(days: Date[]) {
+  const segments: { key: string; label: string; count: number }[] = [];
+  for (let index = 0; index < days.length; index += 7) {
+    const week = days.slice(index, index + 7);
+    const start = monthName(week[0]);
+    const end = monthName(week[week.length - 1]);
+    segments.push({
+      key: week[0].toISOString(),
+      label: start === end ? start : `${start} / ${end}`,
+      count: week.length,
+    });
   }
+  return segments;
+}
+
+function dayLabel(day: Date, scale: TimelineScale) {
   if (scale === "months" && day.getUTCDay() !== 1 && day.getUTCDate() !== 1) {
     return null;
   }
   if (scale === "quarters" && day.getUTCDate() !== 1) return null;
-  return scale === "quarters"
-    ? day.toLocaleDateString("vi-VN", {
-        month: "short",
-        timeZone: "UTC",
-      })
-    : day.getUTCDate();
+  return scale === "quarters" ? monthName(day) : day.getUTCDate();
 }
 
 function dateText(date: Date) {
@@ -240,6 +256,7 @@ export function ProjectTimeline({
   const [collapsedTasks, setCollapsedTasks] = useState<Record<UUID, true>>({});
   const [rowSelection, setRowSelection] = useState<Record<string, true>>({});
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<UUID | null>(null);
   const [dragRevision, setDragRevision] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -413,6 +430,7 @@ export function ProjectTimeline({
     setRowSelection,
     setCollapsedTasks,
     setNewTask: taskData.setNewTask,
+    openTaskDetail: setDetailTaskId,
     updateTask: taskData.updateTask,
     toggleAllTasks,
     childrenHidden,
@@ -530,9 +548,10 @@ export function ProjectTimeline({
                 ) : (
                   <span className="size-6 shrink-0" />
                 )}
-                <span className="shrink-0 whitespace-nowrap text-primary">
-                  {c.shortProjectKey.toUpperCase()}-{task.task_number}
-                </span>
+                <TaskKeyButton
+                  label={`${c.shortProjectKey.toUpperCase()}-${task.task_number}`}
+                  onOpen={() => c.openTaskDetail(task.id)}
+                />
                 <TaskTitleInput task={task} updateTask={c.updateTask} />
                 {depth === 0 && (
                   <Button
@@ -588,13 +607,24 @@ export function ProjectTimeline({
                   placeholder="Chưa phân công"
                   className="w-40"
                   showClear
-                />
+                >
+                  <InputGroupAddon align="inline-start">
+                    <UserAvatar
+                      user={
+                        task.assignee_id
+                          ? c.membersById.get(task.assignee_id)
+                          : null
+                      }
+                    />
+                  </InputGroupAddon>
+                </ComboboxInput>
                 <ComboboxContent>
                   <ComboboxEmpty>Không tìm thấy người phù hợp.</ComboboxEmpty>
                   <ComboboxList>
                     <ComboboxItem value="">Chưa phân công</ComboboxItem>
                     {c.members.map((member) => (
                       <ComboboxItem key={member.id} value={member.id}>
+                        <UserAvatar user={member} />
                         {member.full_name}
                       </ComboboxItem>
                     ))}
@@ -697,6 +727,11 @@ export function ProjectTimeline({
     })),
   }));
 
+  const detailTask = tasks.find((task) => task.id === detailTaskId) ?? null;
+  const detailParentTask = detailTask?.parent_task_id
+    ? (taskGroups.byId.get(detailTask.parent_task_id) ?? null)
+    : null;
+
   const newTaskRow = taskData.newTask && (
     <TableRow className="h-12 bg-muted/40">
       <TableCell className="sticky left-0 z-20 bg-muted/40" />
@@ -784,7 +819,10 @@ export function ProjectTimeline({
     return <QueryMessage error={taskData.error} pending={taskData.isPending} />;
   }
 
-  const segments = monthSegments(timeline.days);
+  const segments =
+    scale === "weeks"
+      ? weekSegments(timeline.days)
+      : monthSegments(timeline.days);
   return (
     <DragDropProvider
       onDragStart={({ operation }) => {
@@ -995,7 +1033,7 @@ export function ProjectTimeline({
                         style={{ width: timelineWidth, ...gridStyle }}
                       >
                         <div
-                          className="grid h-5 border-b"
+                          className="grid h-5"
                           style={{
                             gridTemplateColumns: `repeat(${timeline.days.length}, ${dayWidth}px)`,
                           }}
@@ -1003,7 +1041,7 @@ export function ProjectTimeline({
                           {segments.map((segment) => (
                             <div
                               key={segment.key}
-                              className="truncate border-r px-2 text-xs font-medium"
+                              className="truncate border-r border-b px-2 text-xs font-semibold"
                               style={{ gridColumn: `span ${segment.count}` }}
                             >
                               {segment.label}
@@ -1016,21 +1054,34 @@ export function ProjectTimeline({
                             gridTemplateColumns: `repeat(${timeline.days.length}, ${dayWidth}px)`,
                           }}
                         >
-                          {timeline.days.map((day) => (
-                            <div
-                              key={day.toISOString()}
-                              className="flex flex-col items-center justify-center text-xs"
-                              title={dateText(day)}
-                            >
-                              {dayLabel(day, scale)}
-                            </div>
-                          ))}
+                          {timeline.days.map((day) => {
+                            const isToday =
+                              day.getTime() === timeline.today.getTime();
+                            const label = dayLabel(day, scale);
+                            return (
+                              <div
+                                key={day.toISOString()}
+                                className="flex flex-col items-center justify-center text-xs"
+                                title={dateText(day)}
+                              >
+                                {isToday ? (
+                                  <span className="flex size-5 items-center justify-center rounded-sm bg-primary font-medium text-primary-foreground">
+                                    {label ?? day.getUTCDate()}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {label}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                         {todayOffset >= 0 &&
                           todayOffset < timeline.days.length && (
                             <span
                               aria-hidden="true"
-                              className="pointer-events-none absolute inset-y-0 z-10 w-px bg-primary"
+                              className="pointer-events-none absolute bottom-0 z-10 size-0 -translate-x-1/2 border-x-4 border-t-4 border-x-transparent border-t-primary"
                               style={{ left: (todayOffset + 0.5) * dayWidth }}
                             />
                           )}
@@ -1214,6 +1265,16 @@ export function ProjectTimeline({
           </div>
         </div>
       </section>
+      <TaskDetailSheet
+        projectId={projectId}
+        projectKey={keyPrefix}
+        task={detailTask}
+        parentTask={detailParentTask}
+        members={taskData.members}
+        membersById={taskData.membersById}
+        updateTask={taskData.updateTask}
+        onClose={() => setDetailTaskId(null)}
+      />
       <DragOverlay>
         {activeTask && (
           <div

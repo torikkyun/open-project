@@ -1,16 +1,28 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.session import get_session
+from src.infra.uploads import delete_upload, save_upload, upload_path
 from src.modules.auth.dependencies import get_current_user
 from src.modules.projects.models import Project
 from src.modules.projects.service import require_project_member, require_project_user
-from src.modules.tasks.models import Comment, Task
+from src.modules.tasks.models import Comment, Task, TaskAttachment
 from src.modules.tasks.schema import (
+    AttachmentRead,
     CommentCreate,
     CommentRead,
     TaskCreate,
@@ -22,6 +34,21 @@ from src.modules.tasks.schema import (
 from src.modules.users.models import User
 
 router = APIRouter(tags=["tasks"])
+
+ATTACHMENT_SUBDIR = "attachments"
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+ATTACHMENT_TYPES = {
+    "application/pdf": ".pdf",
+    "application/zip": ".zip",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+}
 
 
 def ensure_due_within_parent(
@@ -247,8 +274,18 @@ async def delete_task(
 ) -> None:
     await require_project_member(session, project_id, user)
     task = await get_task(session, project_id, task_id)
+    await delete_task_attachments(session, task_id)
     await session.delete(task)
     await session.commit()
+
+
+async def delete_task_attachments(session: AsyncSession, task_id: UUID) -> None:
+    """Xóa tệp trên đĩa trước khi hàng bị xóa theo khóa ngoại."""
+    paths = await session.scalars(
+        select(TaskAttachment.storage_path).where(TaskAttachment.task_id == task_id)
+    )
+    for path in paths:
+        delete_upload(path, ATTACHMENT_SUBDIR)
 
 
 async def require_task_member(
@@ -317,5 +354,136 @@ async def delete_comment(
             status.HTTP_403_FORBIDDEN,
             "Chỉ tác giả hoặc quản trị viên mới được xóa bình luận",
         )
+    await delete_comment_attachments(session, comment_id)
     await session.delete(comment)
     await session.commit()
+
+
+async def delete_comment_attachments(session: AsyncSession, comment_id: UUID) -> None:
+    paths = await session.scalars(
+        select(TaskAttachment.storage_path).where(
+            TaskAttachment.comment_id == comment_id
+        )
+    )
+    for path in paths:
+        delete_upload(path, ATTACHMENT_SUBDIR)
+
+
+async def get_attachment(
+    session: AsyncSession, task_id: UUID, attachment_id: UUID
+) -> TaskAttachment:
+    attachment = await session.scalar(
+        select(TaskAttachment).where(
+            TaskAttachment.id == attachment_id,
+            TaskAttachment.task_id == task_id,
+        )
+    )
+    if attachment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy tệp đính kèm")
+    return attachment
+
+
+@router.get(
+    "/projects/{project_id}/tasks/{task_id}/attachments",
+    response_model=list[AttachmentRead],
+)
+async def list_attachments(
+    project_id: UUID,
+    task_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[TaskAttachment]:
+    await require_task_member(session, project_id, task_id, user)
+    result = await session.scalars(
+        select(TaskAttachment)
+        .where(TaskAttachment.task_id == task_id)
+        .order_by(TaskAttachment.created_at)
+    )
+    return list(result)
+
+
+@router.post(
+    "/projects/{project_id}/tasks/{task_id}/attachments",
+    response_model=AttachmentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_attachment(
+    project_id: UUID,
+    task_id: UUID,
+    file: UploadFile = File(...),
+    comment_id: UUID | None = Form(None),
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> TaskAttachment:
+    await require_task_member(session, project_id, task_id, user)
+    if comment_id is not None:
+        comment = await session.scalar(
+            select(Comment).where(Comment.id == comment_id, Comment.task_id == task_id)
+        )
+        if comment is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy bình luận")
+    storage_path, size_bytes, original_name = await save_upload(
+        file,
+        ATTACHMENT_SUBDIR,
+        ATTACHMENT_TYPES,
+        MAX_ATTACHMENT_SIZE,
+        type_error="Chỉ chấp nhận tệp PDF, ZIP, ảnh, Word hoặc Excel",
+        size_error="Tệp đính kèm không được vượt quá 10 MB",
+    )
+    attachment = TaskAttachment(
+        task_id=task_id,
+        comment_id=comment_id,
+        uploader_id=user.id,
+        original_name=original_name,
+        content_type=file.content_type or "application/octet-stream",
+        size_bytes=size_bytes,
+        storage_path=storage_path,
+    )
+    session.add(attachment)
+    await session.commit()
+    await session.refresh(attachment)
+    return attachment
+
+
+@router.get(
+    "/projects/{project_id}/tasks/{task_id}/attachments/{attachment_id}/download"
+)
+async def download_attachment(
+    project_id: UUID,
+    task_id: UUID,
+    attachment_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> FileResponse:
+    await require_task_member(session, project_id, task_id, user)
+    attachment = await get_attachment(session, task_id, attachment_id)
+    path = upload_path(attachment.storage_path, ATTACHMENT_SUBDIR)
+    if path is None or not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tệp không còn tồn tại")
+    return FileResponse(
+        path, filename=attachment.original_name, media_type=attachment.content_type
+    )
+
+
+@router.delete(
+    "/projects/{project_id}/tasks/{task_id}/attachments/{attachment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_attachment(
+    project_id: UUID,
+    task_id: UUID,
+    attachment_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> None:
+    await require_task_member(session, project_id, task_id, user)
+    attachment = await get_attachment(session, task_id, attachment_id)
+    if attachment.uploader_id != user.id and user.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Chỉ người tải lên hoặc quản trị viên mới được xóa tệp đính kèm",
+        )
+    storage_path = attachment.storage_path
+    await session.delete(attachment)
+    await session.commit()
+    delete_upload(storage_path, ATTACHMENT_SUBDIR)

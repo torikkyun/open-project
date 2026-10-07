@@ -16,11 +16,14 @@ export interface User {
 export interface UserCreate {
   email: string;
   full_name: string;
-  password: string;
+}
+
+export interface UserInvite {
+  user: User;
+  reset_url: string;
 }
 
 export interface UserUpdate {
-  email?: string;
   full_name?: string;
   role?: User["role"];
   is_active?: boolean;
@@ -96,4 +99,15 @@ export interface Comment {
 
 export interface CommentCreate {
   body: string;
+}
+
+export interface Attachment {
+  id: UUID;
+  task_id: UUID;
+  comment_id: UUID | null;
+  uploader_id: UUID;
+  original_name: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
 }

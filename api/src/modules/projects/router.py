@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.session import get_session
@@ -99,6 +99,8 @@ async def delete_project(
     user: User = Depends(get_current_user),
 ) -> None:
     project = await require_project_owner(session, project_id, user)
+    # ponytail: xóa dự án chỉ xóa hàng task_attachments theo khóa ngoại, tệp trong
+    # media/attachments còn lại trên đĩa; dọn định kỳ khi cần thu hồi dung lượng.
     await session.delete(project)
     await session.commit()
 
@@ -115,6 +117,30 @@ async def list_project_members(
         .join(ProjectMember, ProjectMember.user_id == User.id)
         .where(ProjectMember.project_id == project_id)
         .order_by(User.email)
+    )
+    return list(result)
+
+
+@router.get("/{project_id}/members/candidates", response_model=list[UserRead])
+async def list_member_candidates(
+    project_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[User]:
+    await require_project_owner(session, project_id, user)
+    # ponytail: chỉ lấy 50 tài khoản đầu, lọc tiếp ở client; phân trang khi vượt.
+    result = await session.scalars(
+        select(User)
+        .where(
+            User.is_active.is_(True),
+            User.id.not_in(
+                select(ProjectMember.user_id).where(
+                    ProjectMember.project_id == project_id
+                )
+            ),
+        )
+        .order_by(User.email)
+        .limit(50)
     )
     return list(result)
 
@@ -154,14 +180,15 @@ async def remove_project_member(
     project = await require_project_owner(session, project_id, user)
     if project.owner_id == user_id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Cannot remove owner")
-    result = await session.execute(
-        delete(ProjectMember).where(
+    member = await session.scalar(
+        select(ProjectMember).where(
             ProjectMember.project_id == project_id,
             ProjectMember.user_id == user_id,
         )
     )
-    if not result.rowcount:
+    if member is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project member not found")
+    await session.delete(member)
     await session.execute(
         update(Task)
         .where(Task.project_id == project_id, Task.assignee_id == user_id)

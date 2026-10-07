@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     redis_url: str = ""
     cache_ttl: int = 60
-    password_reset_expire_minutes: int = 15
+    password_reset_expire_minutes: int = 10
     email_verification_otp_expires_minutes: int = 10
     email_verification_resend_cooldown_seconds: int = 60
     # Số ngày bỏ qua OTP trên thiết bị đã xác thực. 0 = luôn yêu cầu OTP.
@@ -22,14 +22,14 @@ class Settings(BaseSettings):
     upload_dir: str = ""
 
     # SMTP
-    smtp_host: str = ""
+    smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 465
     smtp_secure: bool = True
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = ""
-    email_app_name: str = ""
-    site_url: str = ""
+    email_app_name: str = "Open Project"
+    site_url: str = "http://localhost:3000"
     support_email: str = ""
     notify_email_encryption_key: str = ""
 

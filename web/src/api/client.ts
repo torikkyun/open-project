@@ -6,6 +6,10 @@ export function assetUrl(path: string): string {
   return path.startsWith("http") ? path : `${API_BASE_URL.replace(/\/api\/v1$/, "")}${path}`
 }
 
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`
+}
+
 export const AUTH_EXPIRED_EVENT = "open-project:auth-expired"
 
 export class ApiError extends Error {

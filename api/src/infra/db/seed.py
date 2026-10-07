@@ -18,7 +18,7 @@ ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "String@123")
 
 
 async def create_admin(email: str, full_name: str, password: str) -> None:
-    admin_input = UserCreate(email=email, full_name=full_name, password=password)
+    admin_input = UserCreate(email=email, full_name=full_name)
     engine = create_async_engine(settings.database_url, pool_pre_ping=True)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
@@ -39,7 +39,7 @@ async def create_admin(email: str, full_name: str, password: str) -> None:
                 User(
                     email=admin_input.email,
                     full_name=admin_input.full_name,
-                    password_hash=hash_password(admin_input.password),
+                    password_hash=hash_password(password),
                     avatar_url=default_avatar_url(admin_input.email),
                     role="admin",
                 )

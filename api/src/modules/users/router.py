@@ -1,7 +1,7 @@
-from datetime import UTC, datetime
-from pathlib import Path
+import logging
+import secrets
 from urllib.parse import quote
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import exists, func, or_, select
@@ -9,17 +9,21 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infra.db.session import get_session
+from src.infra.mail import MailNotConfigured, reset_password_link, send_password_reset
 from src.infra.security import hash_password
-from src.infra.settings import settings
+from src.infra.uploads import delete_upload, save_upload
 from src.modules.auth.dependencies import get_current_user
-from src.modules.auth.models import RefreshSession
+from src.modules.auth.service import create_reset_token, revoke_user_sessions
 from src.modules.projects.models import Project, ProjectMember
 from src.modules.tasks.models import Comment, Task
 from src.modules.users.models import User
-from src.modules.users.schema import UserCreate, UserRead, UserUpdate
+from src.modules.users.schema import UserCreate, UserInvite, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+logger = logging.getLogger(__name__)
+
+AVATAR_SUBDIR = "avatars"
 MAX_AVATAR_SIZE = 5 * 1024 * 1024
 AVATAR_TYPES = {
     "image/jpeg": ".jpg",
@@ -34,12 +38,6 @@ def default_avatar_url(email: str) -> str:
         "https://api.dicebear.com/9.x/initials/svg"
         f"?seed={quote(email)}&backgroundType=gradientLinear"
     )
-
-
-def avatar_directory() -> Path:
-    directory = Path(settings.upload_dir or "media") / "avatars"
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
 
 
 def require_admin(user: User) -> None:
@@ -59,18 +57,6 @@ async def active_admin_count(session: AsyncSession) -> int:
     return len(admins.all())
 
 
-async def revoke_user_sessions(session: AsyncSession, user_id: UUID) -> None:
-    sessions = await session.scalars(
-        select(RefreshSession).where(
-            RefreshSession.user_id == user_id,
-            RefreshSession.revoked_at.is_(None),
-        )
-    )
-    now = datetime.now(UTC)
-    for refresh_session in sessions:
-        refresh_session.revoked_at = now
-
-
 @router.get("/me", response_model=UserRead)
 async def read_current_user(
     current_user: User = Depends(get_current_user),
@@ -88,12 +74,12 @@ async def list_users(
     return list(result)
 
 
-@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UserInvite, status_code=status.HTTP_201_CREATED)
 async def create_user(
     body: UserCreate,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> User:
+) -> UserInvite:
     require_admin(current_user)
 
     email = str(body.email).lower()
@@ -103,10 +89,12 @@ async def create_user(
     if exists:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists")
 
+    # Mật khẩu ngẫu nhiên không ai biết: người dùng phải vào link đặt lại mật
+    # khẩu gửi qua email mới đăng nhập được.
     user = User(
         email=email,
         full_name=body.full_name.strip(),
-        password_hash=hash_password(body.password),
+        password_hash=hash_password(secrets.token_urlsafe(32)),
         avatar_url=default_avatar_url(email),
     )
     session.add(user)
@@ -116,7 +104,19 @@ async def create_user(
         await session.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists") from error
     await session.refresh(user)
-    return user
+
+    token = await create_reset_token(session, user)
+    await session.commit()
+    try:
+        await send_password_reset(user.email, user.full_name, token)
+    except (MailNotConfigured, OSError) as error:
+        logger.warning("Không gửi được email mời cho %s: %s", user.email, error)
+    # ponytail: trả liên kết cho quản trị viên để gửi tay khi SMTP chưa cấu hình;
+    # bỏ trường này khi mọi môi trường đều gửi được email.
+    return UserInvite(
+        user=UserRead.model_validate(user),
+        reset_url=reset_password_link(token),
+    )
 
 
 @router.patch("/admin/{user_id}", response_model=UserRead)
@@ -132,17 +132,6 @@ async def update_user(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
 
     changes = body.model_dump(exclude_unset=True)
-    email = changes.get("email")
-    if email is not None:
-        existing_id = await session.scalar(
-            select(User.id).where(
-                func.lower(User.email) == email,
-                User.id != user.id,
-            )
-        )
-        if existing_id is not None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists")
-
     if user.id == current_user.id and changes.get("is_active") is False:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -163,11 +152,7 @@ async def update_user(
         setattr(user, field, value)
     if changes.get("is_active") is False:
         await revoke_user_sessions(session, user.id)
-    try:
-        await session.commit()
-    except IntegrityError as error:
-        await session.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists") from error
+    await session.commit()
     await session.refresh(user)
     return user
 
@@ -244,29 +229,18 @@ async def update_current_user_avatar(
 
     old_avatar_url = current_user.avatar_url
     if avatar is not None:
-        extension = AVATAR_TYPES.get(avatar.content_type or "")
-        if extension is None:
-            raise HTTPException(
-                status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                "Chỉ chấp nhận ảnh JPEG, PNG, WebP hoặc GIF",
-            )
-
-        contents = await avatar.read(MAX_AVATAR_SIZE + 1)
-        if len(contents) > MAX_AVATAR_SIZE:
-            raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                "Ảnh không được vượt quá 5 MB",
-            )
-
-        filename = f"{uuid4().hex}{extension}"
-        path = avatar_directory() / filename
-        path.write_bytes(contents)
-        current_user.avatar_url = f"/media/avatars/{filename}"
+        avatar_url, _, _ = await save_upload(
+            avatar,
+            AVATAR_SUBDIR,
+            AVATAR_TYPES,
+            MAX_AVATAR_SIZE,
+            type_error="Chỉ chấp nhận ảnh JPEG, PNG, WebP hoặc GIF",
+            size_error="Ảnh không được vượt quá 5 MB",
+        )
+        current_user.avatar_url = avatar_url
 
     await session.commit()
     await session.refresh(current_user)
-    if avatar is not None and old_avatar_url and old_avatar_url.startswith("/media/avatars/"):
-        old_path = avatar_directory() / old_avatar_url.removeprefix("/media/avatars/")
-        if old_path.parent == avatar_directory():
-            old_path.unlink(missing_ok=True)
+    if avatar is not None:
+        delete_upload(old_avatar_url, AVATAR_SUBDIR)
     return current_user

@@ -35,7 +35,7 @@ Router tổng hợp tại [`api/src/api/v1/router.py`](./api/src/api/v1/router.p
 
 Mỗi module thường chứa `router.py`, `schema.py` và `models.py`. Router xử lý endpoint và truy vấn dữ liệu; schema Pydantic xác thực dữ liệu vào/ra; model SQLAlchemy ánh xạ bảng. Kiểm tra quyền dùng chung cho dự án nằm trong [`api/src/modules/projects/service.py`](./api/src/modules/projects/service.py). Session DB bất đồng bộ được cấp qua dependency trong [`api/src/infra/db/session.py`](./api/src/infra/db/session.py).
 
-API hiện cho phép thành viên đọc và cập nhật dữ liệu dự án/công việc. Chủ sở hữu quản lý thành viên và xóa dự án; quản trị viên quản lý tài khoản. Người được giao việc và người báo cáo phải là thành viên đang hoạt động của dự án.
+API hiện cho phép thành viên đọc và cập nhật dữ liệu dự án/công việc. Chủ sở hữu quản lý thành viên và xóa dự án; quản trị viên quản lý tài khoản. Danh sách tài khoản có thể thêm vào dự án lấy qua `GET /projects/{id}/members/candidates` dành riêng cho chủ sở hữu, vì `GET /users` chỉ dành cho quản trị viên. Người được giao việc và người báo cáo phải là thành viên đang hoạt động của dự án.
 
 ## Frontend
 
@@ -44,8 +44,9 @@ Web dùng React, TanStack Start, TanStack Router, TanStack Query và Tailwind CS
 Các màn hình chính:
 
 - `/login`: đăng nhập.
+- `/reset`: yêu cầu đặt lại mật khẩu khi không có `?token`, đặt mật khẩu mới khi có `?token`.
 - `/`: không gian làm việc và danh sách dự án.
-- `/projects/:projectId`: các tab dự án; danh sách và dòng thời gian có nội dung, các tab còn lại hiện là khung giao diện.
+- `/projects/:projectId`: các tab dự án; danh sách, dòng thời gian và bảng có nội dung, tab `Thành viên` cho chủ sở hữu thêm hoặc bớt thành viên, tab `Tài liệu` hiện là khung giao diện.
 - `/admin/users`: quản lý tài khoản dành cho quản trị viên.
 - `/settings`: trang cài đặt.
 
@@ -56,6 +57,8 @@ Các màn hình chính:
 ## Xác thực và quyền truy cập
 
 API phát hành access token và refresh token JWT trong cookie `HttpOnly`. Refresh token chỉ lưu dạng SHA-256 trong bảng `refresh_sessions`; refresh thành công sẽ thu hồi token cũ và cấp token mới. Phát hiện token đã thu hồi sẽ thu hồi các phiên đang hoạt động của người dùng. Logout thu hồi phiên hiện tại.
+
+Tài khoản mới do quản trị viên tạo bằng email và họ tên; API sinh mật khẩu ngẫu nhiên không ai biết rồi gửi email mời đặt lại mật khẩu. Endpoint `POST /auth/password-reset` luôn trả 204 để không lộ email nào tồn tại; `POST /auth/password-reset/confirm` đổi mật khẩu, đánh dấu token đã dùng và thu hồi mọi phiên refresh. Nghiệp vụ token nằm trong [`api/src/modules/auth/service.py`](./api/src/modules/auth/service.py); email gửi qua SMTP chuẩn trong [`api/src/infra/mail.py`](./api/src/infra/mail.py) với template HTML ở `api/src/templates/`. Khi chưa cấu hình `SMTP_HOST`, endpoint công khai vẫn trả 204 và endpoint tạo tài khoản trả kèm `reset_url` để quản trị viên gửi tay.
 
 Khi tải ứng dụng, frontend gọi `/users/me`. Khi API trả 401, client thử `/auth/refresh` rồi gửi lại request một lần. Nếu refresh thất bại, frontend phát sự kiện hết phiên và xóa người dùng khỏi trạng thái xác thực.
 
@@ -70,13 +73,17 @@ Các model SQLAlchemy nằm trong `api/src/modules/*/models.py`. PostgreSQL lưu
 - `project_members`: quan hệ thành viên, duy nhất theo cặp dự án/người dùng.
 - `tasks`: công việc và tối đa một cấp subtask; số thứ tự duy nhất trong từng dự án.
 - `task_comments`: bình luận của công việc.
+- `task_attachments`: tệp đính kèm của công việc hoặc của một bình luận (`comment_id` null nghĩa là tệp của công việc).
 - `refresh_sessions`: phiên refresh có thời hạn và trạng thái thu hồi.
+- `password_reset_tokens`: token đặt lại mật khẩu dùng một lần, chỉ lưu bản băm SHA-256 kèm hạn và thời điểm đã dùng.
 
 Khóa chính dùng UUID. Ràng buộc khóa ngoại và xóa dây chuyền được định nghĩa trong model và migration. Khi tạo công việc, API khóa bản ghi dự án để cấp số thứ tự an toàn trước khi lưu.
 
-Migration là nguồn thay đổi schema: `api/alembic/versions/`. Kết nối và metadata Alembic được thiết lập trong `api/alembic/env.py`. Sơ đồ DBML là bản mô tả schema tại revision `0005_task_table_fields`; cập nhật sơ đồ khi thay đổi schema.
+Migration là nguồn thay đổi schema: `api/alembic/versions/`. Kết nối và metadata Alembic được thiết lập trong `api/alembic/env.py`. Sơ đồ DBML là bản mô tả schema tại revision `0007_password_reset_tokens`; cập nhật sơ đồ khi thay đổi schema.
 
 Avatar chấp nhận JPEG, PNG, WebP hoặc GIF, giới hạn 5 MB và lưu dưới `media/avatars/`. API phục vụ file qua `/media`; chỉ xóa avatar cũ nếu URL trỏ đến file local trong thư mục avatar.
+
+Tệp đính kèm công việc chấp nhận PDF, ZIP, ảnh, Word hoặc Excel, giới hạn 10 MB và lưu dưới `media/attachments/`. Khác với avatar, tệp đính kèm chỉ tải được qua endpoint `.../attachments/{id}/download` sau khi kiểm tra quyền thành viên dự án. Hàm dùng chung nằm trong `api/src/infra/uploads.py`.
 
 ## Cấu hình và lệnh phát triển
 

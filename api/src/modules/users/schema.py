@@ -15,7 +15,6 @@ from pydantic import (
 class UserCreate(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=160)
-    password: str = Field(min_length=12, max_length=128)
 
     @field_validator("email")
     @classmethod
@@ -32,15 +31,9 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    email: EmailStr | None = None
     full_name: str | None = Field(default=None, min_length=1, max_length=160)
     role: Literal["admin", "employee"] | None = None
     is_active: bool | None = None
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: EmailStr | None) -> str | None:
-        return str(value).lower() if value is not None else None
 
     @field_validator("full_name")
     @classmethod
@@ -71,3 +64,10 @@ class UserRead(BaseModel):
     role: Literal["admin", "employee"]
     is_active: bool
     created_at: datetime
+
+
+class UserInvite(BaseModel):
+    """Tài khoản vừa tạo kèm liên kết đặt lại mật khẩu gửi cho người dùng."""
+
+    user: UserRead
+    reset_url: str
