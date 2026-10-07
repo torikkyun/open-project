@@ -67,7 +67,7 @@ print("ok")
 
 ## Kiểm tra giao diện thủ công
 
-Mở `/projects/:projectId`:
+Mở lần lượt các trang dưới đây:
 
 1. Gõ liên tục vào ô "Tìm công việc" và ô tiêu đề công việc; bảng không được
    giật, không render lại toàn bộ hàng mỗi ký tự (xem React Profiler).
@@ -79,6 +79,11 @@ Mở `/projects/:projectId`:
    422.
 5. Tab `Bảng`: ba cột trạng thái, kéo thả đổi trạng thái, lọc theo từ khóa và
    người thực hiện.
+6. `/settings`: hai khối "Thông tin cá nhân" và "Cài đặt ứng dụng"; đổi "Giao
+   diện" sang Tối thì cả trang đổi màu ngay, tải lại vẫn giữ; không còn thanh
+   mục giả ở bên trái.
+7. `/admin/users`: panel cao bằng khung nhìn, bảng cuộn bên trong, tiêu đề
+   `text-xl`, đang tải và rỗng nằm trong bảng.
 
 ## Ghi chú
 

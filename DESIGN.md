@@ -36,13 +36,16 @@ Trang chi tiết bám chiều cao khung nhìn, chỉ vùng bảng được cuộ
 </main>
 ```
 
-Trang cuộn thường (cài đặt, quản lý tài khoản):
+Trang cuộn thường (cài đặt):
 
 ```tsx
 <main className="min-h-[calc(100svh-3.75rem)] bg-muted/30 p-4 sm:p-6">
-  <div className="mx-auto flex max-w-7xl flex-col gap-6">…</div>
+  <div className="mx-auto flex max-w-3xl flex-col gap-4">…</div>
 </main>
 ```
+
+Trang danh sách dùng bố cục bám chiều cao như trang dự án: panel chứa bảng,
+chân bảng nằm trong panel, chiều rộng `max-w-7xl`.
 
 Nội dung luôn nằm trong panel `rounded-lg border bg-background`; panel chứa bảng
 dùng `flex min-h-0 min-w-0 max-w-full flex-1 flex-col gap-2 overflow-hidden`,
@@ -122,6 +125,10 @@ select lọc `min-w-36`. Mọi điều khiển chỉ có icon phải có `aria-l
   án 2–10.
 - Nút gửi đổi nhãn khi chờ ("Đang lưu...", "Đang tạo...") và `disabled` khi
   đang chờ hoặc dữ liệu chưa hợp lệ.
+- `/settings` gồm hai khối cùng chuẩn panel: "Thông tin cá nhân" và "Cài đặt
+  ứng dụng". Cài đặt ứng dụng chưa có endpoint nên lưu bằng `localStorage`
+  ([`theme.ts`](./web/src/lib/theme.ts)); phụ đề của khối phải nói rõ tùy chọn
+  chỉ áp dụng cho trình duyệt này.
 
 ## 9. Ngôn ngữ
 
@@ -147,11 +154,8 @@ Trang dự án render hàng trăm ô nhập trong bảng, nên:
 
 - `/`: nội dung là khối `rounded-lg border bg-background p-8` rời, chưa theo
   panel và thanh lọc của trang dự án.
-- `/settings`: tiêu đề `text-2xl font-semibold tracking-tight` kèm nhãn phụ
-  "Không gian làm việc" và lưới riêng; không trang nào khác dùng kiểu này.
-- `/admin/users`: dùng `Card` và bảng thô thay vì `ProjectTaskTable`; trạng thái
-  đang tải và rỗng là `<p>` ngoài bảng.
-- Tab `Bảng` của trang dự án chưa render nội dung.
+
+`/settings` và `/admin/users` đã theo chuẩn này.
 
 ## 12. Checklist trang mới
 

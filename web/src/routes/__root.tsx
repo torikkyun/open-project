@@ -7,8 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AuthProvider } from "@/components/auth-provider"
+import { applyTheme, onThemeChange, readTheme } from "@/lib/theme"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,6 +31,13 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
+  // ponytail: áp theme sau khi mount nên trang nháy sáng lúc tải; thêm script
+  // inline ở head nếu cần hết nháy.
+  useEffect(() => {
+    applyTheme(readTheme())
+    return onThemeChange(() => applyTheme(readTheme()))
+  }, [])
+
   return (
     <QueryProvider>
       <AuthProvider>
