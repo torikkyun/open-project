@@ -1,33 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import {
-  api,
-  User,
-  type Task,
-  type TaskCreate,
-  type TaskUpdate,
-  type UUID,
-} from "@/api";
-import { memberQueryKey, taskQueryKey } from "./constants";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { api, type Task, type TaskCreate, type TaskUpdate, type UUID } from "@/api";
+import { taskQueryKey } from "../../constants/task";
+import { useProjectTaskData } from "../../hooks/use-project-task-data";
 import type { TaskDraft } from "./types";
 import { dateValue } from "./utils";
 
 export function useProjectTasks(projectId: UUID) {
   const queryClient = useQueryClient();
+  const taskData = useProjectTaskData(projectId);
 
   const [newTask, setNewTask] = useState<TaskDraft | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateTitle, setQuickCreateTitle] = useState("");
   const [titleDrafts, setTitleDrafts] = useState<Record<UUID, string>>({});
 
-  const tasksQuery = useQuery({
-    queryKey: taskQueryKey(projectId),
-    queryFn: () => api.listAllTasks(projectId),
-  });
-  const membersQuery = useQuery({
-    queryKey: memberQueryKey(projectId),
-    queryFn: () => api.listMembers(projectId),
-  });
 
   const updateMutation = useMutation({
     mutationFn: ({ taskId, changes }: { taskId: UUID; changes: TaskUpdate }) =>
@@ -188,24 +175,13 @@ export function useProjectTasks(projectId: UUID) {
     });
   };
 
-  const membersById = useMemo(
-    () =>
-      new Map<UUID, User>(
-        (membersQuery.data ?? []).map((member): [UUID, User] => [
-          member.id,
-          member,
-        ]),
-      ),
-    [membersQuery.data],
-  );
-
   return {
-    tasks: tasksQuery.data ?? [],
-    members: membersQuery.data ?? [],
-    membersById,
-    isPending: tasksQuery.isPending || membersQuery.isPending,
-    error: tasksQuery.error ?? membersQuery.error,
-    refetch: () => tasksQuery.refetch(),
+    tasks: taskData.tasks,
+    members: taskData.members,
+    membersById: taskData.membersById,
+    isPending: taskData.isPending,
+    error: taskData.error,
+    refetch: taskData.refetch,
     newTask,
     setNewTask,
     quickCreateOpen,

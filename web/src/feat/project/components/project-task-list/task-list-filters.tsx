@@ -4,7 +4,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { statuses } from "./constants";
+import { statuses } from "../../constants/task";
 
 export function TaskListFilters({
   search,

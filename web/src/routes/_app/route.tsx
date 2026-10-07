@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, assetUrl, type Project, type User } from "@/api";
-import { AuthProvider, useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,11 +60,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  return (
-    <AuthProvider>
-      <ProtectedApp />
-    </AuthProvider>
-  );
+  return <ProtectedApp />;
 }
 
 function AccountMenu({
@@ -152,7 +148,7 @@ function AccountMenu({
           </DropdownMenuItem> */}
           <DropdownMenuItem onClick={onAccountClick}>
             <UserRound />
-            Tài khoản
+            Cài đặt
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Bell />
@@ -322,7 +318,7 @@ function ProtectedApp() {
           <AccountMenu
             user={user}
             logout={logout}
-            onAccountClick={() => void navigate({ to: "/account" })}
+            onAccountClick={() => void navigate({ to: "/settings" })}
             onAvatarUpload={(file) => avatarMutation.mutate(file)}
             avatarUploading={avatarMutation.isPending}
           />

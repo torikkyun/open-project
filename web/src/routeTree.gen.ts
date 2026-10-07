@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppAccountRouteImport } from './routes/_app/account'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin/users'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects/$projectId'
 import { Route as AuthLoginIndexRouteImport } from './routes/_auth/login/index'
@@ -30,9 +30,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppAccountRoute = AppAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
@@ -53,14 +53,14 @@ const AuthLoginIndexRoute = AuthLoginIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/account': typeof AppAccountRoute
+  '/settings': typeof AppSettingsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/login/': typeof AuthLoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
-  '/account': typeof AppAccountRoute
+  '/settings': typeof AppSettingsRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/login': typeof AuthLoginIndexRoute
@@ -69,7 +69,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteRouteWithChildren
   '/_auth': typeof AuthRouteRouteWithChildren
-  '/_app/account': typeof AppAccountRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/': typeof AppIndexRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -78,14 +78,14 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/account' | '/admin/users' | '/projects/$projectId' | '/login/'
+    '/' | '/settings' | '/admin/users' | '/projects/$projectId' | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/account' | '/admin/users' | '/projects/$projectId' | '/login'
+  to: '/' | '/settings' | '/admin/users' | '/projects/$projectId' | '/login'
   id:
     | '__root__'
     | '/_app'
     | '/_auth'
-    | '/_app/account'
+    | '/_app/settings'
     | '/_app/'
     | '/_app/admin/users'
     | '/_app/projects/$projectId'
@@ -120,11 +120,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/_app/account': {
-      id: '/_app/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AppAccountRouteImport
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/admin/users': {
@@ -152,14 +152,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteRouteChildren {
-  AppAccountRoute: typeof AppAccountRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppAccountRoute: AppAccountRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,

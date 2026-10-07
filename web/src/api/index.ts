@@ -66,6 +66,15 @@ export const api = {
   listUsers: () => request<User[]>("/users"),
   createUser: (body: UserCreate) =>
     request<User>("/users", jsonBody("POST", body)),
+  updateUser: (userId: UUID, body: UserUpdate) =>
+    request<User>(
+      `/users/admin/${encodeURIComponent(userId)}`,
+      jsonBody("PATCH", body),
+    ),
+  deleteUser: (userId: UUID) =>
+    request<void>(`/users/admin/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    }),
 
   listProjects: () => request<Project[]>("/projects"),
   createProject: (body: ProjectCreate) =>

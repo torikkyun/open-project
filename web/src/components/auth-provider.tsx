@@ -5,12 +5,13 @@ import {
   useMemo,
   type ReactNode,
 } from "react"
+import { useRouterState } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { api, type User } from "@/api"
 import { AUTH_EXPIRED_EVENT } from "@/api/client"
 
-const currentUserQueryKey = ["auth", "currentUser"]
+export const currentUserQueryKey = ["auth", "currentUser"]
 
 type AuthContextValue = {
   user: User | null
@@ -23,10 +24,13 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
+  const isLoginRoute = useRouterState({
+    select: (state) => state.location.pathname.startsWith("/login"),
+  })
   const currentUserQuery = useQuery<User | null>({
     queryKey: currentUserQueryKey,
     queryFn: () => api.currentUser(),
-    enabled: typeof window !== "undefined",
+    enabled: typeof window !== "undefined" && !isLoginRoute,
     retry: false,
     staleTime: Infinity,
   })

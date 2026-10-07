@@ -1,6 +1,6 @@
 Project open_project {
   database_type: 'PostgreSQL'
-  Note: 'Core schema for users, projects, tasks, task comments, and refresh sessions.'
+  Note: 'Schema after Alembic revision 0005_task_table_fields.'
 }
 
 Table users {
@@ -8,8 +8,9 @@ Table users {
   email varchar(320) [not null]
   password_hash varchar(255) [not null]
   full_name varchar(160) [not null]
-  role varchar(20) [not null, default: 'employee', note: 'admin or employee']
-  is_active boolean [not null, default: true]
+  avatar_url varchar(500)
+  role varchar(20) [not null, note: 'admin or employee']
+  is_active boolean [not null]
   created_at timestamptz [not null]
 
   indexes {
@@ -19,11 +20,17 @@ Table users {
 
 Table projects {
   id uuid [pk]
+  project_key varchar(10) [not null]
+  next_task_number integer [not null, default: 0]
   name varchar(160) [not null]
   description text
   owner_id uuid [not null]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+
+  indexes {
+    project_key [unique, name: 'uq_projects_project_key']
+  }
 }
 
 Table project_members {
@@ -42,18 +49,31 @@ Table project_members {
 Table tasks {
   id uuid [pk]
   project_id uuid [not null]
+  parent_task_id uuid
+  task_number integer [not null]
+  start_at timestamptz
   title varchar(200) [not null]
   description text
-  status varchar(20) [not null, default: 'todo', note: 'todo, in_progress, or done']
+  status varchar(20) [not null, note: 'todo, in_progress, or done']
+  priority varchar(20) [not null, default: 'none', note: 'none, low, medium, high, or highest']
+  position float [not null, default: 0]
   due_at timestamptz
   assignee_id uuid
   created_by uuid [not null]
+  reporter_id uuid [not null]
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 
   indexes {
     project_id [name: 'ix_tasks_project_id']
+    parent_task_id [name: 'ix_tasks_parent_task_id']
     assignee_id [name: 'ix_tasks_assignee_id']
+    (project_id, task_number) [unique, name: 'uq_tasks_project_task_number']
+  }
+
+  checks {
+    `status IN ('todo', 'in_progress', 'done')` [name: 'ck_tasks_status']
+    `priority IN ('none', 'low', 'medium', 'high', 'highest')` [name: 'ck_tasks_priority']
   }
 }
 
@@ -87,8 +107,10 @@ Ref: projects.owner_id > users.id [delete: restrict]
 Ref: project_members.project_id > projects.id [delete: cascade]
 Ref: project_members.user_id > users.id [delete: cascade]
 Ref: tasks.project_id > projects.id [delete: cascade]
-Ref: tasks.assignee_id > users.id [delete: set null]
+Ref: tasks.parent_task_id >? tasks.id [delete: cascade]
+Ref: tasks.assignee_id >? users.id [delete: set null]
 Ref: tasks.created_by > users.id [delete: restrict]
+Ref: tasks.reporter_id > users.id [delete: restrict]
 Ref: task_comments.task_id > tasks.id [delete: cascade]
 Ref: task_comments.author_id > users.id [delete: restrict]
 Ref: refresh_sessions.user_id > users.id [delete: cascade]

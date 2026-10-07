@@ -2,7 +2,14 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class UserCreate(BaseModel):
@@ -22,6 +29,36 @@ class UserCreate(BaseModel):
         if not value:
             raise ValueError("Full name cannot be blank")
         return value
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    full_name: str | None = Field(default=None, min_length=1, max_length=160)
+    role: Literal["admin", "employee"] | None = None
+    is_active: bool | None = None
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr | None) -> str | None:
+        return str(value).lower() if value is not None else None
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_full_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("Full name cannot be blank")
+        return value
+
+    @model_validator(mode="after")
+    def reject_null_fields(self) -> "UserUpdate":
+        if not self.model_fields_set:
+            raise ValueError("At least one field must be provided")
+        if any(getattr(self, field) is None for field in self.model_fields_set):
+            raise ValueError("Fields cannot be null")
+        return self
 
 
 class UserRead(BaseModel):

@@ -19,6 +19,13 @@ export interface UserCreate {
   password: string;
 }
 
+export interface UserUpdate {
+  email?: string;
+  full_name?: string;
+  role?: User["role"];
+  is_active?: boolean;
+}
+
 export interface Project {
   id: UUID;
   name: string;

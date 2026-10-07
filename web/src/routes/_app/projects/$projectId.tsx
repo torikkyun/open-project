@@ -12,6 +12,7 @@ import {
 
 import { api } from "@/api";
 import { ProjectTaskList } from "@/feat/project/components/project-task-list";
+import { ProjectTimeline } from "@/feat/project/components/project-timeline";
 // import { ProjectTaskBoard } from "@/feat/project/components/project-task-board";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -87,6 +88,12 @@ function ProjectPage() {
           >
             {value === "list" && (
               <ProjectTaskList
+                projectId={project.id}
+                projectKey={project.project_key}
+              />
+            )}
+            {value === "timeline" && (
+              <ProjectTimeline
                 projectId={project.id}
                 projectKey={project.project_key}
               />

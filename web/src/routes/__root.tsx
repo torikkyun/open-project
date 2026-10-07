@@ -8,6 +8,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { useState } from "react"
+import { AuthProvider } from "@/components/auth-provider"
 
 export const Route = createRootRoute({
   head: () => ({
@@ -31,9 +32,11 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <QueryProvider>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
+      <AuthProvider>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </AuthProvider>
     </QueryProvider>
   )
 }

@@ -1,55 +1,18 @@
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { api, type Task, type TaskStatus, type UUID, type User } from "@/api";
+import { api, type Task, type TaskStatus, type UUID } from "@/api";
+import { statuses, taskQueryKey } from "@/feat/project/constants/task";
+import { QueryMessage } from "@/feat/project/components/query-message";
+import { useProjectTaskData } from "@/feat/project/hooks/use-project-task-data";
 import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
 
-const statuses: { value: TaskStatus; label: string }[] = [
-  { value: "todo", label: "Cần làm" },
-  { value: "in_progress", label: "Đang thực hiện" },
-  { value: "done", label: "Hoàn thành" },
-];
-
-const taskQueryKey = (projectId: UUID) => ["project-tasks", projectId];
-const memberQueryKey = (projectId: UUID) => ["project-members", projectId];
-
-function QueryMessage({
-  error,
-  pending,
-}: {
-  error: Error | null;
-  pending: boolean;
-}) {
-  if (error) {
-    return (
-      <p className="py-8 text-center text-sm text-destructive" role="alert">
-        {error.message}
-      </p>
-    );
-  }
-  if (pending) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Đang tải công việc...
-      </p>
-    );
-  }
-  return null;
-}
-
 export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
   const queryClient = useQueryClient();
-  const tasksQuery = useQuery({
-    queryKey: taskQueryKey(projectId),
-    queryFn: () => api.listAllTasks(projectId),
-  });
-  const membersQuery = useQuery({
-    queryKey: memberQueryKey(projectId),
-    queryFn: () => api.listMembers(projectId),
-  });
+  const taskData = useProjectTaskData(projectId);
   const updateMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: UUID; status: TaskStatus }) =>
       api.updateTask(projectId, taskId, { status }),
@@ -77,27 +40,17 @@ export function ProjectTaskBoard({ projectId }: { projectId: UUID }) {
     },
   });
 
-  const tasks = tasksQuery.data ?? [];
-  const members = membersQuery.data ?? [];
-  const membersById = useMemo(
-    () =>
-      new Map<UUID, User>(
-        members.map((member): [UUID, User] => [member.id, member]),
-      ),
-    [members],
-  );
+  const { tasks, membersById } = taskData;
   const tasksById = useMemo(
     () =>
       new Map<UUID, Task>(tasks.map((task): [UUID, Task] => [task.id, task])),
     [tasks],
   );
-  const queryError = tasksQuery.error ?? membersQuery.error;
-
-  if (tasksQuery.isPending || membersQuery.isPending || queryError) {
+  if (taskData.isPending || taskData.error) {
     return (
       <QueryMessage
-        error={queryError}
-        pending={tasksQuery.isPending || membersQuery.isPending}
+        error={taskData.error}
+        pending={taskData.isPending}
       />
     );
   }

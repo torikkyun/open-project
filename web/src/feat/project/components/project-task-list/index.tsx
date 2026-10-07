@@ -28,19 +28,17 @@ import {
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { priorities, statuses } from "./constants";
+import { priorities, statuses } from "../../constants/task";
 import { useProjectTasks } from "./hooks";
-import { QueryMessage } from "./query-message";
+import { QueryMessage } from "../query-message";
+import { ProjectTaskTable } from "../project-task-table";
 import { TaskListFilters } from "./task-list-filters";
 import type { TaskListContext } from "./types";
 import { dateInputValue, dateValue, moveTask } from "./utils";
+import { groupTasks, projectKeyPrefix } from "../../utils/task";
 
 const taskFeatures = tableFeatures({ rowSelectionFeature });
 const columnHelper = createColumnHelper<typeof taskFeatures, Task>();
@@ -101,26 +99,9 @@ export function ProjectTaskList({
 
   const tasks = useProjectTasks(projectId);
 
-  const taskGroups = useMemo(() => {
-    const roots = tasks.tasks
-      .filter((task) => task.parent_task_id === null)
-      .sort((left, right) => left.position - right.position);
-    const children = new Map<UUID, Task[]>();
-    for (const task of tasks.tasks) {
-      if (task.parent_task_id) {
-        const siblings = children.get(task.parent_task_id) ?? [];
-        siblings.push(task);
-        children.set(task.parent_task_id, siblings);
-      }
-    }
-    for (const siblings of children.values()) {
-      siblings.sort((left, right) => left.position - right.position);
-    }
-    return { roots, children };
-  }, [tasks.tasks]);
+  const taskGroups = useMemo(() => groupTasks(tasks.tasks), [tasks.tasks]);
 
-  const shortProjectKey =
-    projectKey.match(/^[a-z]{1,3}\d*/i)?.[0] ?? projectKey.slice(0, 3);
+  const shortProjectKey = projectKeyPrefix(projectKey);
   const parentTaskIds = taskGroups.roots
     .filter((task) => taskGroups.children.has(task.id))
     .map((task) => task.id);
@@ -634,6 +615,15 @@ export function ProjectTaskList({
     onRowSelectionChange: setRowSelection,
   });
   const tableOrderKey = visibleTasks.map((task) => task.id).join(",");
+  const headerRows = table.getHeaderGroups().map((group) => ({
+    id: group.id,
+    cells: group.headers.map((header) => ({
+      id: header.id,
+      content: header.isPlaceholder ? null : (
+        <table.FlexRender header={header} />
+      ),
+    })),
+  }));
 
   const newTaskRow = tasks.newTask && (
     <TableRow className="bg-muted/40">
@@ -752,28 +742,25 @@ export function ProjectTaskList({
               tasks.createError?.message}
           </p>
         )}
-        <Table
+        <ProjectTaskTable
           containerClassName="min-h-0 min-w-0 max-w-full flex-1 overflow-auto"
           className="min-w-[900px]"
-        >
-          <TableHeader>
-            {table.getHeaderGroups().map((group) => (
-              <TableRow key={group.id}>
-                {group.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="sticky top-0 z-10 bg-background"
-                  >
-                    {header.isPlaceholder ? null : (
-                      <table.FlexRender header={header} />
-                    )}
-                  </TableHead>
-                ))}
+          headerRows={headerRows}
+          bodyKey={`${tableOrderKey}-${dragRevision}`}
+          emptyState={
+            !visibleTasks.length && !tasks.newTask ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-16 text-center"
+                >
+                  Không có công việc phù hợp.
+                </TableCell>
               </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody key={`${tableOrderKey}-${dragRevision}`}>
-            {table.getRowModel().rows.map((row) => (
+            ) : null
+          }
+        >
+          {table.getRowModel().rows.map((row) => (
               <Fragment key={row.id}>
                 {tasks.newTask?.insertBeforeTaskId === row.original.id &&
                   newTaskRow}
@@ -855,25 +842,14 @@ export function ProjectTaskList({
                   }
                 </SortableTaskRow>
               </Fragment>
-            ))}
-            {tasks.newTask &&
-              (!tasks.newTask.insertBeforeTaskId ||
-                !visibleTasks.some(
-                  (task) => task.id === tasks.newTask?.insertBeforeTaskId,
-                )) &&
-              newTaskRow}
-            {!visibleTasks.length && !tasks.newTask && (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-16 text-center"
-                >
-                  Không có công việc phù hợp.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          ))}
+          {tasks.newTask &&
+            (!tasks.newTask.insertBeforeTaskId ||
+              !visibleTasks.some(
+                (task) => task.id === tasks.newTask?.insertBeforeTaskId,
+              )) &&
+            newTaskRow}
+        </ProjectTaskTable>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-sm">
           {tasks.quickCreateOpen ? (
             <form
